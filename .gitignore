@@ -1,3 +1,7 @@
+# ------------------------------
+# Roblox
+# ------------------------------
+
 # Project place file
 /Tigerhacks-.rbxlx
 
@@ -5,4 +9,47 @@
 /*.rbxlx.lock
 /*.rbxl.lock
 
+# Rojo generated files
 sourcemap.json
+
+
+# ------------------------------
+# Python
+# ------------------------------
+
+# Virtual environments
+venv/
+**/venv/
+.venv/
+**/.venv/
+
+# Python cache
+__pycache__/
+**/__pycache__/
+*.py[cod]
+
+
+# ------------------------------
+# Environment Variables / Secrets
+# ------------------------------
+
+# NEVER commit API keys
+.env
+**/.env
+.env.*
+**/.env.*
+
+
+# ------------------------------
+# macOS
+# ------------------------------
+
+.DS_Store
+**/.DS_Store
+
+
+# ------------------------------
+# VS Code
+# ------------------------------
+
+.vscode/
