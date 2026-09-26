@@ -10,12 +10,13 @@ Everyone knows the sleep advice: put the phone down, dim the lights, don't eat a
 
 ## What it does
 You play the last hour of a college student's evening in a cozy dorm room.
-- **Make bedtime choices.** Put the phone on the desk or keep scrolling? Main light or warm lamps? Finish dinner, or a late heavy meal? The room reacts right away: curtains slide, lights dim, the phone lands on the pillow.
+- **Bedtime Rush (60 seconds).** Lights out is at 11:00 PM. Your phone has grown legs and is running around the room taunting you ("ur streak is dying"): catch it to dock it. Smack the big light off (then your roommate turns it back on). Dodge midnight pizza flying across the room. Healthy habits take effort; bad ones happen by default, just like real life.
 - **Fall asleep, and your choices become the level.** You cross a dream path to reach the morning:
   - Kept scrolling? **The Algorithm**, a giant phone with googly eyes, chases you shouting "Just one more video!" If it catches you, you're frozen watching a 45-minute video essay. Notification cards written by Gemini ("Your ex liked a post from 2019") block the path.
   - Bright lights? The dream glares, and platforms flicker out under you.
   - Late heavy meal? The path drifts like a waterbed and you move slower.
 - **Count sheep.** Ten sheep (Gary, Baaarbara, Fleece Witherspoon…) wait along the path. Your bad habits distract them: some are doomscrolling, some need sunglasses, some are in a food coma. You can only count the ones you didn't ruin.
+- **Get graded.** From S "Sleep Sensei" to D "Raccoon Energy", based on your dream, sheep counted, and how early you got to bed.
 - **Morning report.** Barb the Sleep Sheep, a dry-humored narrator powered by Gemini, explains what each choice did to your dream and gives you one small thing to try tomorrow night.
 
 ## How we built it
@@ -51,7 +52,7 @@ roblox, luau, rojo, python, fastapi, gemini-api, git
 
 ## Demo script (2 minutes)
 1. "Sleep advice is easy to hear and hard to follow. We made the consequences playable."
-2. A judge makes the three key choices. Point out how the room reacts.
+2. A judge plays Bedtime Rush: chasing the phone, smacking the light, dodging pizza.
 3. Sleep. The Algorithm shows up, the sheep are on their phones.
 4. Morning: Barb's report ties each choice to what happened in the dream.
 5. Replay with good choices: a calm, starry dream and every sheep countable.

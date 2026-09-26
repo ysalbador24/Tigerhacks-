@@ -4,6 +4,7 @@ local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Dream = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Dream"))
 local DreamCourse = require(script.Parent:WaitForChild("DreamCourse"))
+local BedtimeRush = require(script.Parent:WaitForChild("BedtimeRush"))
 local player = Players.LocalPlayer
 local gui = Instance.new("ScreenGui")
 gui.Name = "BedtimeRoutine"
@@ -144,6 +145,8 @@ local completed=false
 local startedAt=0
 local remote -- assigned below after intro
 local runDream
+local rush -- the active Bedtime Rush round, if any
+local sleepNow, startRush
 local function request(key,option)
 	local done,result=false,nil
 	task.spawn(function()
@@ -172,6 +175,13 @@ end
 local function pace(seconds) return if demo then math.max(3,math.floor(seconds*0.25+0.5)) else seconds end
 local function show(key)
 	if busy or completed then return end
+	-- Bedtime Rush plays the key habits as objectives, not dialogs.
+	if demo and isEssential(key) then return end
+	-- In Bedtime Rush the bed ends the round immediately.
+	if key=="Sleep" and demo then
+		if rush then rush.goToBed() else sleepNow() end
+		return
+	end
 	current=key; dialog.Visible=true; first.Visible=true; second.Visible=key~="Sleep"; close.Visible=true
 	if key=="Sleep" then
 		title.Text="Call it a night"; story.Text="Your choices are yours. Ready to see how this evening adds up?"; first.Text="Go to sleep"
@@ -240,13 +250,15 @@ local function showMorning(result)
 	updateMood(result.wellbeing)
 	layout(true)
 	dialog.Visible=true; hud.Visible=true; feedbackPanel.Visible=true
-	title.Text="Morning • Dream Stability "..result.stability.." / 100"
+	moodPanel.Visible=true
+	title.Text="Morning • Grade "..result.grade..": "..result.gradeTitle.." • Dream Stability "..result.stability.." / 100"
 	local lines={}
 	for _,line in result.dreamLines do table.insert(lines,"• "..line) end
 	story.Text=result.feeling.." • Mood: "..result.wellbeing.moodLabel
 		..string.format(" • Simulated sleep: %dh %02dm",math.floor(result.wellbeing.sleepMinutes/60),result.wellbeing.sleepMinutes%60)
 		.." • Stumbles: "..result.stumbles
 		.." • Sheep counted: "..result.sheep.." / "..result.sheepTotal
+		..(if demo then " • In bed with "..result.secondsLeft.."s to spare" else "")
 		.."\n\nYour choices shaped the dream:\n"..table.concat(lines,"\n")
 		.."\n\n"..result.reflectionSource.." says: "..result.reflection
 		.."\n\n"..result.suggestion
@@ -319,6 +331,7 @@ local function choose(option)
 		apply("Phone",1); apply("Notifications",2); apply("Temperature",2); apply("Food",2); apply("Lighting",2)
 		for _,p in prompts do p.Enabled=true end
 		refresh(); dialog.Visible=false
+		if demo then startRush() end
 	elseif key=="Sleep" then
 		if result.message then story.Text=result.message
 		elseif result.dream then runDream(result.dream) end
@@ -365,7 +378,32 @@ remote=game:GetService("ReplicatedStorage"):WaitForChild("BedtimeChoice",15)
 if not remote then gui:Destroy(); fadeGui:Destroy(); root:Destroy(); return end
 demo=ReplicatedStorage:GetAttribute("DemoMode")==true
 if demo then
-	for _,p in prompts do if isEssential(p.ObjectText) then p.ObjectText=p.ObjectText.." • key choice" end end
+	-- Bedtime Rush plays the key habits as arcade objectives, so drop their dialog prompts.
+	local kept={}
+	for _,p in prompts do if isEssential(p.ObjectText) then p.Parent=nil else table.insert(kept,p) end end
+	prompts=kept
+end
+function sleepNow()
+	if busy or completed then return end
+	if rush then rush.stop(); rush=nil end
+	current="Sleep"
+	choose(1)
+end
+function startRush()
+	if rush then rush.stop() end
+	hud.Visible=false; moodPanel.Visible=false
+	rush=BedtimeRush.start({
+		request=request,
+		apply=apply,
+		onFinished=function()
+			-- Let an optional activity (like a shower) finish first.
+			task.spawn(function()
+				while busy do task.wait(0.2) end
+				dialog.Visible=false
+				sleepNow()
+			end)
+		end,
+	})
 end
 for _,object in workspace:GetDescendants() do
 	if object:IsA("PointLight") and object.Parent:IsA("BasePart") and object.Parent.Name~="Flame" and (object.Parent.Position-Vector3.new(-84,25,-161)).Magnitude<40 then roomLights[object]=object.Brightness end
@@ -404,6 +442,7 @@ refresh()
 gui.Enabled=true; startedAt=os.clock(); Lighting.ClockTime=18.5
 Lighting.Ambient=Color3.fromRGB(110,100,120)
 for _,p in prompts do p.Enabled=true end
+if demo then startRush() end
 while gui.Parent do
 	if not completed then
 		local elapsed=os.clock()-startedAt

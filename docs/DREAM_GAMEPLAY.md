@@ -2,14 +2,21 @@
 
 Bedtime choices now change a playable dream. After sleeping, the player crosses a short cloud path to the "Morning" sunrise. The morning screen shows what each choice changed and a reflection tied to those choices.
 
-## Demo mode (on by default)
+## Bedtime Rush (demo mode, on by default)
 
-`DEMO_MODE` at the top of `src/server/Bedtime.server.luau`.
+`DEMO_MODE` at the top of `src/server/Bedtime.server.luau`. When it is on, the evening is a 60-second arcade round (`src/client/BedtimeRush.luau`):
 
-- **On:** make the three key choices (Phone, Lighting, Food), then use the bed prompt. You can sleep right away. Other activities are optional, and their timed sequences run at about a quarter of their full length.
-- **Off:** uses the original rules: all 11 activities and five minutes of evening.
+- A **3-2-1 countdown**, then a timer bar counts down to 11:00 PM lights out.
+- **Catch your runaway phone.** It floats around the room taunting you ("ur streak is dying") and flees when you get close. After 30 seconds its battery runs low and it slows down. Catch it → Phone docked (healthy). Don't → you scrolled.
+- **Smack the big light.** Touch the floating bulb to dim the room. Your roommate may turn it back on once, so you have to find it again.
+- **Dodge the midnight pizza.** Slices fly in from the walls, aimed at you, and speed up over time. Get hit once → late heavy meal.
+- **Get to bed.** Use a bed prompt to end the round early; time left adds a bonus. If the timer runs out, you pass out on the floor.
 
-Key-choice prompts are labelled "• key choice", and the HUD tracks them.
+Healthy habits take effort; unhealthy ones happen by default. Anything left undone counts as: phone kept, big light on, no late meal. The optional room activities (shower, reading…) still work, but they use up the clock.
+
+**Grade:** Dream Stability + 2 per counted sheep + up to 15 for getting to bed early. S "Sleep Sensei", A "Well-Rested Legend", B "Decent Napper", C "Chronically Online", D "Raccoon Energy".
+
+Set `DEMO_MODE = false` for the original routine (all 11 activities as dialog choices, five minutes of evening).
 
 ## What each key choice does to the dream
 
@@ -45,8 +52,8 @@ To enable Gemini:
 ## Test checklist (Studio)
 
 1. Rojo sync → Play → START.
-2. Try to sleep straight away: the game should list the missing key choices.
-3. Choose **Keep scrolling**, **Keep the bright light**, **Late heavy meal**, then sleep. You should get The Algorithm chasing you, notification cards, flickering and drifting tiles, slower walking, and distracted sheep with speech bubbles.
+2. A 3-2-1 countdown starts Bedtime Rush. Try catching the phone, smacking the bulb, and dodging pizza.
+3. For the chaotic dream: ignore the phone and the light, stand in the way of a pizza, then use the bed. You should get The Algorithm chasing you, notification cards, flickering and drifting tiles, slower walking, and distracted sheep with speech bubbles.
 4. Fall off once: you respawn at the last checkpoint and Stumbles goes up.
 5. Reach the sunrise → morning screen → **Play another evening**.
 6. Replay with all good options: a calm night, stars, a still path, all 10 sheep countable, and a higher Dream Stability.

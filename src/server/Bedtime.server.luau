@@ -6,8 +6,9 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Mood = require(Shared:WaitForChild("EveningMood"))
 local Dream = require(Shared:WaitForChild("Dream"))
 
--- Demo mode: three key choices, then sleep immediately. Set false for the full
--- routine (all activities and five minutes of evening before bed).
+-- Demo mode runs Bedtime Rush: a 60-second arcade round where the three key
+-- habits are played, not clicked. Set false for the full routine (all
+-- activities and five minutes of evening before bed).
 local DEMO_MODE = true
 -- Public base URL of backend/backend/main.py, e.g. "https://abc123.ngrok-free.app".
 -- Gemini writes the dream's notifications and Barb's morning report. Leave empty
@@ -36,6 +37,16 @@ local totalChoices = 0
 for _ in choices do totalChoices += 1 end
 local bedroomStart = CFrame.lookAt(Vector3.new(-101, 15.5, -139), Vector3.new(-101, 15.5, -161))
 local checkpoints = Dream.checkpoints()
+local RUSH_SECONDS = 60
+-- In Bedtime Rush, healthy habits take effort: anything left undone falls back to these.
+local rushDefaults = {Phone = 2, Lighting = 2, Food = 1}
+local grades = {
+	{95, "S", "Sleep Sensei"},
+	{80, "A", "Well-Rested Legend"},
+	{60, "B", "Decent Napper"},
+	{40, "C", "Chronically Online"},
+	{0, "D", "Raccoon Energy"},
+}
 
 -- phase: "room" -> "ready" (sleep accepted) -> "dream" -> "morning"
 local sessions = {}
@@ -171,8 +182,18 @@ local function finishNight(player, session)
 	local stability = wellbeing.rest
 	local text, suggestion = scriptedReflection(session.answers, session.sheep, #session.dream.sheep)
 	local ai = geminiReflection(player, session.answers, session.dream, session.stumbles, session.sheep, suggestion)
+	-- Grade: dream stability, plus counted sheep, plus getting to bed early.
+	local points = stability + session.sheep * 2 + math.min(15, math.floor((session.secondsLeft or 0) / 2))
+	local grade = grades[#grades]
+	for _, entry in grades do
+		if points >= entry[1] then grade = entry; break end
+	end
 	session.phase = "morning"
 	session.result = {
+		grade = grade[2],
+		gradeTitle = grade[3],
+		points = points,
+		secondsLeft = session.secondsLeft or 0,
 		score = stability,
 		stability = stability,
 		feeling = if stability >= 75 then "A calm dream" elseif stability >= 50 then "A restless dream" else "A stormy dream",
@@ -201,6 +222,10 @@ remote.OnServerInvoke = function(player, key, option)
 		begin(player)
 		return {replay = true, wellbeing = Mood.summarize({})}
 	end
+	if key == "RushStart" then
+		if session.phase == "room" and not session.rushStarted then session.rushStarted = os.clock() end
+		return {started = true}
+	end
 	if key == "Status" then return {wellbeing = Mood.summarize(session.answers), demo = DEMO_MODE} end
 	if key == "Sleep" then
 		if session.phase == "ready" then return {dream = session.dream} end -- retry after a failed EnterDream
@@ -208,8 +233,8 @@ remote.OnServerInvoke = function(player, key, option)
 		local count = 0
 		for _ in session.answers do count += 1 end
 		if DEMO_MODE then
-			local missing = missingEssentials(session.answers)
-			if #missing > 0 then return {message = "Before bed, make tonight's key choices: " .. table.concat(missing, ", ") .. "."} end
+			for _, key in missingEssentials(session.answers) do session.answers[key] = rushDefaults[key] end
+			session.secondsLeft = if session.rushStarted then math.clamp(math.floor(RUSH_SECONDS - (os.clock() - session.rushStarted)), 0, RUSH_SECONDS) else 0
 		else
 			if count < totalChoices then return {message = "Try all " .. totalChoices .. " room and bathroom activities before going to sleep."} end
 			local remaining = math.ceil(300 - (os.clock() - session.started))
