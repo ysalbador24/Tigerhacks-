@@ -5,6 +5,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from google import genai
 
@@ -280,6 +281,9 @@ def stats():
 def leaderboard():
     require_database()
     return {"leaderboard": db.leaderboard()}
+
+
+app.mount("/static", StaticFiles(directory=Path(__file__).with_name("static")), name="static")
 
 
 @app.get("/dashboard", response_class=HTMLResponse)

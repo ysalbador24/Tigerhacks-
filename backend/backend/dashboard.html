@@ -4,13 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Snooze You Choose · Live Sleep Stats</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="/static/chart.umd.js"></script>  <!-- Chart.js 4.4.1 (MIT), served locally so venue Wi-Fi can't break it -->
 <style>
   :root {
     --bg: #17152a; --panel: #242040; --ink: #f7e9d4; --muted: #b9aecb;
     --good: #9fd6b0; --bad: #f29b8b; --warn: #f5cf7a; --blue: #8fb8e8;
   }
   * { box-sizing: border-box; }
+  html { background: var(--bg); }
   body { margin: 0; background: radial-gradient(circle at top, #2c2650, var(--bg) 60%); color: var(--ink);
          font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; min-height: 100vh; }
   main { max-width: 1100px; margin: 0 auto; padding: 28px 16px 48px; }
@@ -92,8 +93,8 @@
   });
   const hourChart = new Chart(document.getElementById("hourChart"), {
     data: { labels: [], datasets: [
-      { type: "bar", label: "Nights", data: [], backgroundColor: "#8fb8e8", borderRadius: 6, yAxisID: "y" },
-      { type: "line", label: "Doomscroll %", data: [], borderColor: "#f29b8b", tension: 0.3, yAxisID: "y1" }
+      { type: "bar", label: "Nights", data: [], backgroundColor: "#8fb8e8", borderRadius: 6, yAxisID: "y", order: 2 },
+      { type: "line", label: "Doomscroll %", data: [], borderColor: "#f29b8b", backgroundColor: "#f29b8b", pointRadius: 6, tension: 0.3, yAxisID: "y1", order: 1 }
     ] },
     options: { scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, y1: { position: "right", min: 0, max: 100, grid: { drawOnChartArea: false } } } }
   });
