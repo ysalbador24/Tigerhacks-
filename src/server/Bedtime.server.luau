@@ -130,7 +130,8 @@ local function postAsync(path, payload)
 			return HttpService:RequestAsync({
 				Url = BACKEND_URL .. path,
 				Method = "POST",
-				Headers = {["Content-Type"] = "application/json", ["X-Game-Key"] = GAME_KEY},
+				-- ngrok-skip-browser-warning: free ngrok tunnels otherwise answer with an HTML warning page.
+				Headers = {["Content-Type"] = "application/json", ["X-Game-Key"] = GAME_KEY, ["ngrok-skip-browser-warning"] = "true"},
 				Body = HttpService:JSONEncode(payload),
 			})
 		end)
