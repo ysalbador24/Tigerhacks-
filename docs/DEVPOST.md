@@ -24,7 +24,8 @@ You play the last hour of a college student's evening in a cozy dorm room.
 - **The server owns the game.** Choices, scoring, dream checkpoints, fall detection, the win condition, and sheep counts are all validated on the server, so repeated choices can't farm points and players can't skip to the ending.
 - **Deterministic rules from one shared module** (`Dream.luau`): each choice maps to a specific dream effect. The same rules drive the server's validation and the client's per-player dream, so every player sees the dream they earned.
 - **Gemini API, used twice.** It writes personalized dream notifications from the player's choices, and it writes Barb's morning report. Both go through Roblox's text filter, and both fall back to scripted text after 4 seconds, so the demo never hangs.
-- **Python FastAPI backend** that brokers the Gemini calls, so the API key never touches the game.
+- **Python FastAPI backend on Vultr** (systemd + Caddy HTTPS) that brokers the Gemini calls, so the API key never touches the game.
+- **Tiger Data (TimescaleDB):** every night played is stored in a hypertable, and a continuous aggregate rolls it up hourly. The morning screen shows live community stats ("62% of players doomscrolled; players who docked their phone averaged 71 stability vs 34"). A **live web dashboard** charts habits, grades, and a Sleep Sensei leaderboard in real time. Player ids are stored only as salted hashes.
 
 ## Health impact
 Poor sleep hygiene is a real problem for college students, and advice alone doesn't change behavior. Our core choices follow CDC sleep guidance: screens off before bed, a dark, quiet, cool room, and no large meals late at night. Instead of a checklist, players *feel* the tradeoff. Scrolling really is fun in the moment (your mood goes up), but it costs you later. We call the score "Dream Stability" and say on screen that it's a game outcome, not a health measurement. We don't claim the game improves sleep; it helps players recognize bedtime habits and see what they lead to.
@@ -48,7 +49,7 @@ Poor sleep hygiene is a real problem for college students, and advice alone does
 More nights with a week-long streak, more choices (caffeine, a consistent wake time), and voiced narration for Barb.
 
 ## Built with
-roblox, luau, rojo, python, fastapi, gemini-api, git
+roblox, luau, rojo, python, fastapi, gemini-api, tiger-data, timescaledb, postgresql, vultr, caddy, chart.js, git
 
 ## Demo script (2 minutes)
 1. "Sleep advice is easy to hear and hard to follow. We made the consequences playable."
@@ -56,3 +57,4 @@ roblox, luau, rojo, python, fastapi, gemini-api, git
 3. Sleep. The Algorithm shows up, the sheep are on their phones.
 4. Morning: Barb's report ties each choice to what happened in the dream.
 5. Replay with good choices: a calm, starry dream and every sheep countable.
+6. Point at the laptop running the live dashboard: both nights just appeared, with the doomscroll rate and the phone-vs-stability chart.

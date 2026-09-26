@@ -15,6 +15,8 @@ local DEMO_MODE = true
 -- to use the scripted versions. Requires HttpService.HttpEnabled.
 local BACKEND_URL = ""
 local BACKEND_TIMEOUT = 4
+-- Must match GAME_API_KEY in the backend's .env (protects POST /nights). Don't commit the real value.
+local GAME_KEY = ""
 ReplicatedStorage:SetAttribute("DemoMode", DEMO_MODE)
 
 local remote = Instance.new("RemoteFunction")
@@ -111,16 +113,18 @@ local function scriptedReflection(answers, sheep, sheepTotal)
 	return table.concat(lines, " "), suggestion
 end
 
--- POST to the Gemini backend, waiting at most BACKEND_TIMEOUT seconds.
-local function postBackend(path, payload)
-	if BACKEND_URL == "" then return nil end
+-- Start a POST to the backend now; the returned function waits for the reply
+-- (at most BACKEND_TIMEOUT seconds from the start), so requests can overlap.
+local function postAsync(path, payload)
+	if BACKEND_URL == "" then return function() return nil end end
 	local reply
+	local deadline = os.clock() + BACKEND_TIMEOUT
 	task.spawn(function()
 		local ok, response = pcall(function()
 			return HttpService:RequestAsync({
 				Url = BACKEND_URL .. path,
 				Method = "POST",
-				Headers = {["Content-Type"] = "application/json"},
+				Headers = {["Content-Type"] = "application/json", ["X-Game-Key"] = GAME_KEY},
 				Body = HttpService:JSONEncode(payload),
 			})
 		end)
@@ -128,12 +132,17 @@ local function postBackend(path, payload)
 			local decoded, data = pcall(HttpService.JSONDecode, HttpService, response.Body)
 			if decoded and type(data) == "table" then reply = data; return end
 		end
-		if not ok then warn("Backend request failed:", response) end
+		warn("Backend request failed:", path, if ok then response.StatusCode else response)
 		reply = false
 	end)
-	local deadline = os.clock() + BACKEND_TIMEOUT
-	while reply == nil and os.clock() < deadline do task.wait(0.1) end
-	return reply or nil
+	return function()
+		while reply == nil and os.clock() < deadline do task.wait(0.1) end
+		return reply or nil
+	end
+end
+
+local function postBackend(path, payload)
+	return postAsync(path, payload)()
 end
 
 -- AI text is shown in the game, so run it through Roblox's text filter first.
@@ -168,26 +177,60 @@ local function geminiNotifications(player, answers)
 	return if #list >= 3 then list else nil
 end
 
--- Barb the Sleep Sheep's morning report, written by Gemini.
-local function geminiReflection(player, answers, config, stumbles, sheep, suggestion)
-	local data = postBackend("/reflection", {
+-- Barb the Sleep Sheep's morning report, written by Gemini. Returns a waiter.
+local function geminiReflection(answers, config, stumbles, sheep, suggestion)
+	return postAsync("/reflection", {
 		choices = chosenTexts(answers), dream = config.lines, stumbles = stumbles,
 		sheep = sheep, sheep_total = #config.sheep, suggestion = suggestion,
 	})
-	return data and filtered(player, data.reflection, 500)
+end
+
+-- Only plain numbers from the stats reach the client.
+local function communityStats(data)
+	if type(data) ~= "table" or type(data.stats) ~= "table" then return nil end
+	local stats = data.stats
+	local function number(value) return if type(value) == "number" then value else nil end
+	return {
+		nights = number(stats.nights),
+		scrolledRate = number(stats.scrolled_rate),
+		phoneDocked = number(stats.stability_phone_docked),
+		phoneScrolled = number(stats.stability_scrolled),
+		rankToday = number(data.rank_today),
+	}
 end
 
 local function finishNight(player, session)
 	local wellbeing = Mood.summarize(session.answers)
 	local stability = wellbeing.rest
 	local text, suggestion = scriptedReflection(session.answers, session.sheep, #session.dream.sheep)
-	local ai = geminiReflection(player, session.answers, session.dream, session.stumbles, session.sheep, suggestion)
 	-- Grade: dream stability, plus counted sheep, plus getting to bed early.
 	local points = stability + session.sheep * 2 + math.min(15, math.floor((session.secondsLeft or 0) / 2))
 	local grade = grades[#grades]
 	for _, entry in grades do
 		if points >= entry[1] then grade = entry; break end
 	end
+	-- Ask Gemini for Barb's report and save the night to Tiger Data at the same time.
+	local waitReflection = geminiReflection(session.answers, session.dream, session.stumbles, session.sheep, suggestion)
+	local waitNight = postAsync("/nights", {
+		player_id = tostring(player.UserId),
+		display_name = string.sub(player.DisplayName, 1, 40),
+		phone = session.answers.Phone or 1,
+		lighting = session.answers.Lighting or 1,
+		food = session.answers.Food or 1,
+		notifications = session.answers.Notifications,
+		stability = stability,
+		grade = grade[2],
+		points = points,
+		sheep = session.sheep,
+		sheep_total = #session.dream.sheep,
+		stumbles = session.stumbles,
+		seconds_left = session.secondsLeft or 0,
+		woke_early = session.wokeEarly == true,
+		gemini_used = BACKEND_URL ~= "",
+	})
+	local reflectionData = waitReflection()
+	local ai = reflectionData and filtered(player, reflectionData.reflection, 500)
+	local community = communityStats(waitNight())
 	session.phase = "morning"
 	session.result = {
 		grade = grade[2],
@@ -205,6 +248,7 @@ local function finishNight(player, session)
 		reflection = ai or text,
 		reflectionSource = if ai then "Barb the Sleep Sheep (Gemini)" else "Barb the Sleep Sheep",
 		suggestion = suggestion,
+		community = community,
 		answers = session.answers,
 		wellbeing = wellbeing,
 	}

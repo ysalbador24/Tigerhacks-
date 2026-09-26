@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Snooze You Choose · Live Sleep Stats</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #17152a; --panel: #242040; --ink: #f7e9d4; --muted: #b9aecb;
+    --good: #9fd6b0; --bad: #f29b8b; --warn: #f5cf7a; --blue: #8fb8e8;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: radial-gradient(circle at top, #2c2650, var(--bg) 60%); color: var(--ink);
+         font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; min-height: 100vh; }
+  main { max-width: 1100px; margin: 0 auto; padding: 28px 16px 48px; }
+  h1 { margin: 0; font-size: clamp(26px, 4vw, 40px); }
+  .sub { color: var(--muted); margin: 4px 0 24px; }
+  .live { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--good);
+          margin-right: 6px; animation: pulse 1.6s infinite; }
+  @keyframes pulse { 50% { opacity: .3; } }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .tile, .card { background: var(--panel); border-radius: 16px; padding: 16px; }
+  .tile .value { font-size: 32px; font-weight: 800; }
+  .tile .label { color: var(--muted); font-size: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+  .card h2 { margin: 0 0 4px; font-size: 18px; }
+  .card p { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
+  table { width: 100%; border-collapse: collapse; }
+  td, th { text-align: left; padding: 7px 4px; border-bottom: 1px solid #3a345c; }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; }
+  .grade { font-weight: 800; }
+  .empty { color: var(--muted); padding: 24px 0; text-align: center; }
+  footer { color: var(--muted); font-size: 13px; margin-top: 24px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>🐑 Snooze You Choose · Live Sleep Stats</h1>
+  <p class="sub"><span class="live"></span>Every night played in Roblox, stored in Tiger Data. Updates every 5 seconds.</p>
+
+  <section class="tiles">
+    <div class="tile"><div class="value" id="nights">–</div><div class="label">nights played</div></div>
+    <div class="tile"><div class="value" id="players">–</div><div class="label">players</div></div>
+    <div class="tile"><div class="value" id="scrolled">–</div><div class="label">doomscrolled 📱</div></div>
+    <div class="tile"><div class="value" id="light">–</div><div class="label">left the big light on 💡</div></div>
+    <div class="tile"><div class="value" id="pizza">–</div><div class="label">got midnight-pizza'd 🍕</div></div>
+    <div class="tile"><div class="value" id="sheep">–</div><div class="label">avg sheep counted</div></div>
+  </section>
+
+  <section class="grid">
+    <div class="card">
+      <h2>Does the phone matter?</h2>
+      <p>Average Dream Stability, phone docked vs. kept scrolling.</p>
+      <canvas id="phoneChart" height="200"></canvas>
+    </div>
+    <div class="card">
+      <h2>Grades</h2>
+      <p>S Sleep Sensei · A Well-Rested Legend · B Decent Napper · C Chronically Online · D Raccoon Energy</p>
+      <canvas id="gradeChart" height="200"></canvas>
+    </div>
+    <div class="card">
+      <h2>Tonight, hour by hour</h2>
+      <p>Nights played and doomscroll rate (TimescaleDB continuous aggregate).</p>
+      <canvas id="hourChart" height="200"></canvas>
+    </div>
+    <div class="card">
+      <h2>Today's Sleep Senseis</h2>
+      <p>Top scores in the last 24 hours.</p>
+      <table>
+        <thead><tr><th>#</th><th>Player</th><th>Grade</th><th>Points</th><th>🐑</th></tr></thead>
+        <tbody id="board"><tr><td colspan="5" class="empty">No nights yet. Go to bed!</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>Dream Stability and grades are game outcomes, not health measurements. Habits are based on CDC sleep guidance.</footer>
+</main>
+<script>
+  Chart.defaults.color = "#b9aecb";
+  Chart.defaults.borderColor = "#3a345c";
+  const grades = ["S", "A", "B", "C", "D"];
+  const phoneChart = new Chart(document.getElementById("phoneChart"), {
+    type: "bar",
+    data: { labels: ["Phone docked", "Kept scrolling"], datasets: [{ data: [0, 0], backgroundColor: ["#9fd6b0", "#f29b8b"], borderRadius: 8 }] },
+    options: { plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100 } } }
+  });
+  const gradeChart = new Chart(document.getElementById("gradeChart"), {
+    type: "bar",
+    data: { labels: grades, datasets: [{ data: [0, 0, 0, 0, 0], backgroundColor: ["#f5cf7a", "#9fd6b0", "#8fb8e8", "#c9a5e8", "#f29b8b"], borderRadius: 8 }] },
+    options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+  });
+  const hourChart = new Chart(document.getElementById("hourChart"), {
+    data: { labels: [], datasets: [
+      { type: "bar", label: "Nights", data: [], backgroundColor: "#8fb8e8", borderRadius: 6, yAxisID: "y" },
+      { type: "line", label: "Doomscroll %", data: [], borderColor: "#f29b8b", tension: 0.3, yAxisID: "y1" }
+    ] },
+    options: { scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, y1: { position: "right", min: 0, max: 100, grid: { drawOnChartArea: false } } } }
+  });
+
+  const pct = v => v == null ? "–" : Math.round(v * 100) + "%";
+  const setText = (id, value) => { document.getElementById(id).textContent = value; };
+
+  async function refresh() {
+    try {
+      const [statsRes, boardRes] = await Promise.all([fetch("/stats"), fetch("/leaderboard")]);
+      if (!statsRes.ok || !boardRes.ok) throw new Error("Database not configured");
+      const { stats, hourly } = await statsRes.json();
+      const { leaderboard } = await boardRes.json();
+
+      setText("nights", stats.nights);
+      setText("players", stats.players);
+      setText("scrolled", pct(stats.scrolled_rate));
+      setText("light", pct(stats.big_light_rate));
+      setText("pizza", pct(stats.late_meal_rate));
+      setText("sheep", stats.avg_sheep ?? "–");
+
+      phoneChart.data.datasets[0].data = [stats.stability_phone_docked ?? 0, stats.stability_scrolled ?? 0];
+      phoneChart.update();
+      gradeChart.data.datasets[0].data = grades.map(g => stats.grades[g] || 0);
+      gradeChart.update();
+      hourChart.data.labels = hourly.map(h => new Date(h.bucket).toLocaleTimeString([], { hour: "numeric" }));
+      hourChart.data.datasets[0].data = hourly.map(h => h.nights);
+      hourChart.data.datasets[1].data = hourly.map(h => Math.round(h.scrolled_rate * 100));
+      hourChart.update();
+
+      const body = document.getElementById("board");
+      body.replaceChildren();
+      if (leaderboard.length === 0) {
+        const row = body.insertRow(); const cell = row.insertCell();
+        cell.colSpan = 5; cell.className = "empty"; cell.textContent = "No nights yet. Go to bed!";
+      }
+      leaderboard.forEach((entry, i) => {
+        const row = body.insertRow();
+        [i + 1, entry.display_name, entry.grade, entry.points, entry.sheep].forEach((value, col) => {
+          const cell = row.insertCell(); cell.textContent = value;
+          if (col === 2) cell.className = "grade";
+        });
+      });
+    } catch (error) {
+      document.querySelector(".sub").textContent = "Waiting for the database… (" + error.message + ")";
+    }
+  }
+  refresh();
+  setInterval(refresh, 5000);
+</script>
+</body>
+</html>

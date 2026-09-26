@@ -38,6 +38,9 @@ __pycache__/
 **/.env
 .env.*
 **/.env.*
+# Templates with no secrets are fine to share
+!.env.example
+!**/.env.example
 
 
 # ------------------------------

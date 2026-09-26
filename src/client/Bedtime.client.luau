@@ -245,6 +245,15 @@ local function apply(key,option)
 	if key=="Temperature" then temperatureText.Text=if good then "67°F • Cool" else "72°F • Warm"; thermostat.Color=if good then Color3.fromRGB(160,200,220) else cream end
 	if key=="Food" then snack.Transparency=if good then 1 else 0 end
 end
+-- Live stats from every night played, stored in Tiger Data by the backend.
+local function communityLine(c)
+	if type(c)~="table" or not c.nights then return "" end
+	local parts={"\n\nAll players so far ("..c.nights.." nights)"}
+	if c.scrolledRate then table.insert(parts,math.floor(c.scrolledRate*100+0.5).."% doomscrolled") end
+	if c.phoneDocked and c.phoneScrolled then table.insert(parts,string.format("phone docked: %d stability vs %d scrolling",math.floor(c.phoneDocked+0.5),math.floor(c.phoneScrolled+0.5))) end
+	if c.rankToday then table.insert(parts,"you're #"..c.rankToday.." today") end
+	return table.concat(parts," • ")
+end
 local function showMorning(result)
 	TweenService:Create(Lighting,TweenInfo.new(3),{ClockTime=7.2,Brightness=2,Ambient=Color3.fromRGB(150,140,130)}):Play()
 	updateMood(result.wellbeing)
@@ -262,6 +271,7 @@ local function showMorning(result)
 		.."\n\nYour choices shaped the dream:\n"..table.concat(lines,"\n")
 		.."\n\n"..result.reflectionSource.." says: "..result.reflection
 		.."\n\n"..result.suggestion
+		..communityLine(result.community)
 		.."\n\nBased on CDC sleep tips: turn off screens before bed, keep your room dark, quiet, and cool, and avoid large meals late at night. Dream Stability is a game outcome, not a measure of your health."
 	current="Replay"; first.Text="Play another evening"; first.Visible=true; second.Visible=false; close.Visible=false
 end
