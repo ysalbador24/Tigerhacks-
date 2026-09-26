@@ -13,6 +13,7 @@ from google import genai
 load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 
 if not GEMINI_API_KEY:
     raise RuntimeError("GEMINI_API_KEY was not found in .env")
@@ -41,6 +42,10 @@ app = FastAPI(
 
 class ReflectionRequest(BaseModel):
     choices: list[str]
+    # Sent by the Roblox game after the dream; optional for older clients.
+    dream: list[str] = []
+    stumbles: int = 0
+    suggestion: str | None = None
 
 
 # -----------------------------------
@@ -78,6 +83,9 @@ def create_reflection(request: ReflectionRequest):
         f"- {choice}" for choice in request.choices
     )
 
+    dream_text = "\n".join(f"- {line}" for line in request.dream) or "- (not provided)"
+    suggestion_text = request.suggestion or "Pick one small change based on the choices."
+
     # Prompt sent to Gemini
     prompt = f"""
 You are the narrator for an educational sleep game
@@ -87,11 +95,20 @@ The player made these choices:
 
 {choices_text}
 
-Give the player a short reflection about how their
-choices may affect healthy sleep habits.
+Those choices changed the player's dream like this:
+
+{dream_text}
+
+The player stumbled {request.stumbles} time(s) in the dream.
+Suggested change for next night: {suggestion_text}
+
+Give the player a short reflection that connects their
+actual choices to what happened in the dream, then
+end with the one suggested change for next night.
 
 Rules:
 - Maximum 3 sentences.
+- Plain text only, no markdown.
 - Use simple, friendly language.
 - Do not shame the player.
 - Do not diagnose medical conditions.
@@ -102,7 +119,7 @@ Rules:
     try:
         # Send prompt to Gemini
         response = gemini_client.interactions.create(
-            model="gemini-3.8-flash",
+            model=GEMINI_MODEL,
             input=prompt
         )
 
