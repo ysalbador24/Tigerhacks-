@@ -17,6 +17,11 @@
         "Client": {
           "$path": "src/client"
         }
+      },
+      "$properties": {
+        "CharacterUseJumpPower": false,
+        "CharacterJumpHeight": 7.2,
+        "CharacterWalkSpeed": 16
       }
     },
     "Workspace": {
