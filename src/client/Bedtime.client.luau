@@ -69,17 +69,24 @@ local function button(text, y)
 end
 local first, second, close = button("",0.56),button("",0.73),button("Back to the room",0.9)
 close.Size=UDim2.fromScale(0.86,0.08)
+-- Keep the original interactions aligned with the relocated library and bed.
+local bedroom=workspace:WaitForChild("CozyBedroom101")
+local layoutAnchors=bedroom:WaitForChild("LayoutAnchors")
+local bedSleepTarget=layoutAnchors:WaitForChild("BedSleepTarget")
+local phoneDeskAnchor=layoutAnchors:WaitForChild("PhoneDeskAnchor")
+local phoneBedAnchor=layoutAnchors:WaitForChild("PhoneBedAnchor")
+local libraryAnchor=layoutAnchors:WaitForChild("LibraryInteractionAnchor")
 local activities = {
 	{"Curtains","The world outside can wait.","Close the curtains","Leave them open",Vector3.new(-99,22.4,-185)},
 	{"Lighting","A softer glow makes this room feel like a place to rest.","Turn off the main light","Turn on the main light",Vector3.new(-95,17.4,-134.5)},
 	{"Food","Dinner is over. What feels right for the end of your evening?","Finish eating for tonight","Have a late heavy meal",Vector3.new(-62,19,-157)},
-	{"Phone","One more video could become many. Where will your phone spend the night?","Put the phone on the desk","Keep scrolling in bed",Vector3.new(-102,19,-164)},
-	{"Notifications","The group chat is still buzzing. You can catch up tomorrow.","Turn on Do Not Disturb","Keep notifications on",Vector3.new(-98,19,-165)},
+	{"Phone","One more video could become many. Where will your phone spend the night?","Put the phone on the desk","Keep scrolling in bed",phoneDeskAnchor.Position+Vector3.new(0,1,0)},
+	{"Notifications","The group chat is still buzzing. You can catch up tomorrow.","Turn on Do Not Disturb","Keep notifications on",phoneDeskAnchor.Position+Vector3.new(2,1,0)},
 	{"Temperature","Settle into a room that feels comfortably cool to you.","Make the room comfortably cool","Keep the room warm",Vector3.new(-109,21,-149)},
 	{"Shower","Warm water, a soft towel, and a quiet moment to reset.","Take a warm shower","Skip showering",Vector3.new(-128,17,-145)},
 	{"BrushTeeth","Set your toothbrush ready and take a moment for your evening routine.","Brush my teeth","Skip brushing",Vector3.new(-120.5,18,-147.5)},
 	{"Skincare","Cleanse, moisturize, and settle into your evening.","Do my skincare routine","Skip skincare",Vector3.new(-114.5,18,-147.5)},
-	{"Reading","A quiet chapter in your cozy upstairs nook.","Read a quiet chapter","Skip reading",Vector3.new(-62.5,34,-148)},
+	{"Reading","A quiet chapter in your cozy downstairs library.","Read a quiet chapter","Skip reading",libraryAnchor.Position},
 	{"WindDown","Let your shoulders relax. Breathe gently at your own pace for a quiet minute.","Take a quiet breathing break","Skip winding down",Vector3.new(-71,17,-149)},
 }
 local root=Instance.new("Folder"); root.Name="BedtimeInteractions"; root.Parent=workspace
@@ -90,7 +97,8 @@ local curtains={}
 local expansion
 local candleOn=true
 local tvOn=false
-local phone=part("BedtimePhone",Vector3.new(1,0.15,1.8),Vector3.new(-102,18.6,-163),ink)
+local phone=part("BedtimePhone",Vector3.new(1,0.15,1.8),phoneDeskAnchor.Position,ink)
+phone.CFrame=phoneDeskAnchor.CFrame
 local plate=part("EveningPlate",Vector3.new(2.5,0.15,2.5),Vector3.new(-62,17.8,-157),cream)
 local snack=part("LateSnack",Vector3.new(1.6,0.5,1.6),Vector3.new(-62,18.1,-157),Color3.fromRGB(190,126,72))
 local thermostat=part("Thermostat",Vector3.new(0.3,2,2.5),Vector3.new(-109.5,19,-149),cream)
@@ -133,7 +141,7 @@ local function prompt(key,pos)
 	p.Triggered:Connect(function() show(key) end); table.insert(prompts,p)
 end
 for _,a in activities do prompt(a[1],a[5]) end
-prompt("Sleep",Vector3.new(-78,21,-180))
+prompt("Sleep",bedSleepTarget.Position)
 local roomLights={}
 local function setCurtains(closed)
 	for _,p in curtains do
@@ -178,7 +186,7 @@ local function apply(key,option)
 			if shelf then shelf.UpstairsSwitch.Orientation=Vector3.new(0,0,if good then -15 else 15) end
 		end
 	end
-	if key=="Phone" then phone.Position=if good then Vector3.new(-102,18.6,-163) else Vector3.new(-78,20.7,-180) end
+	if key=="Phone" then phone.CFrame=if good then phoneDeskAnchor.CFrame else phoneBedAnchor.CFrame end
 	if key=="Notifications" then phone.Color=if good then ink else Color3.fromRGB(120,196,232) end
 	if key=="Temperature" then temperatureText.Text=if good then "67°F • Cool" else "72°F • Warm"; thermostat.Color=if good then Color3.fromRGB(160,200,220) else cream end
 	if key=="Food" then snack.Transparency=if good then 1 else 0 end
@@ -250,7 +258,7 @@ if not remote then gui:Destroy(); root:Destroy(); return end
 for _,object in workspace:GetDescendants() do
 	if object:IsA("PointLight") and object.Parent:IsA("BasePart") and object.Parent.Name~="Flame" and (object.Parent.Position-Vector3.new(-84,25,-161)).Magnitude<40 then roomLights[object]=object.Brightness end
 end
-local bedroom=workspace:WaitForChild("CozyBedroom101",15)
+bedroom=workspace:WaitForChild("CozyBedroom101",15)
 if bedroom then
 	expansion=bedroom:WaitForChild("CottageExpansion",15)
 	if expansion then
