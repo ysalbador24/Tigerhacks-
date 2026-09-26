@@ -8,7 +8,8 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+# Tiger Cloud's downloaded .env calls it TIMESCALE_SERVICE_URL; either name works.
+DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("TIMESCALE_SERVICE_URL")
 PLAYER_SALT = os.getenv("PLAYER_SALT", "snooze-you-choose")
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
