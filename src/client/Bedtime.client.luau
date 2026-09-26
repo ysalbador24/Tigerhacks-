@@ -390,6 +390,14 @@ if bedroom then
 		setCurtains(false); setCandle(true); setTV(false)
 	end
 end
+-- Sleep from any bed, wherever the furniture has been moved: attach a prompt to every mattress.
+for _,object in workspace:GetDescendants() do
+	if object:IsA("BasePart") and object.Name=="Mattress" and not object:FindFirstChild("SleepPrompt") then
+		local p=Instance.new("ProximityPrompt"); p.Name="SleepPrompt"; p.ActionText="Go to sleep"; p.ObjectText="Bed"
+		p.MaxActivationDistance=12; p.RequiresLineOfSight=false; p.Enabled=false; p.Parent=object
+		p.Triggered:Connect(function() show("Sleep") end); table.insert(prompts,p)
+	end
+end
 local status=request("Status")
 if status then updateMood(status.wellbeing) end
 refresh()
