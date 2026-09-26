@@ -38,6 +38,11 @@ __pycache__/
 **/.env
 .env.*
 **/.env.*
+# Downloaded database credentials (e.g. tiger-cloud-db-*-credentials.env / .txt)
+*.env
+*credentials*.txt
+*credentials*.env
+
 # Templates with no secrets are fine to share
 !.env.example
 !**/.env.example
