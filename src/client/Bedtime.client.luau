@@ -28,6 +28,10 @@ end
 local hud = panel(UDim2.fromScale(0.025,0.035), UDim2.fromScale(0.4,0.18))
 local clock = label(hud,"10:00 PM • Your evening",UDim2.fromScale(0.04,0.04),UDim2.fromScale(0.92,0.28))
 local progress = label(hud,"0 / 11 choices • Explore your room",UDim2.fromScale(0.04,0.34),UDim2.fromScale(0.92,0.3))
+progress.TextScaled=true
+do local c=Instance.new("UITextSizeConstraint"); c.MaxTextSize=18; c.Parent=progress end
+clock.TextScaled=true
+do local c=Instance.new("UITextSizeConstraint"); c.MaxTextSize=18; c.Parent=clock end
 label(hud,"Walk to an object and use its prompt.",UDim2.fromScale(0.04,0.65),UDim2.fromScale(0.92,0.25))
 local moodPanel=panel(UDim2.fromScale(0.615,0.035),UDim2.fromScale(0.36,0.27))
 moodPanel.Name="MoodMeter"
@@ -100,9 +104,9 @@ dreamStatus.TextXAlignment=Enum.TextXAlignment.Left
 local wakeButton=Instance.new("TextButton"); wakeButton.Text="Wake up now"; wakeButton.Position=UDim2.fromScale(0.62,0.74); wakeButton.Size=UDim2.fromScale(0.33,0.2)
 wakeButton.BackgroundColor3=Color3.fromRGB(183,203,190); wakeButton.TextColor3=ink; wakeButton.Font=Enum.Font.Gotham; wakeButton.TextSize=14; wakeButton.Visible=false; wakeButton.Parent=dreamPanel
 local wakeCorner=Instance.new("UICorner"); wakeCorner.CornerRadius=UDim.new(0,8); wakeCorner.Parent=wakeButton
+local fadeGui=Instance.new("ScreenGui"); fadeGui.Name="DreamFade"; fadeGui.IgnoreGuiInset=true; fadeGui.DisplayOrder=20; fadeGui.ResetOnSpawn=false; fadeGui.Parent=gui.Parent
 local overlay=Instance.new("TextLabel"); overlay.Size=UDim2.fromScale(1,1); overlay.BackgroundColor3=Color3.fromRGB(12,12,28); overlay.BackgroundTransparency=1
-overlay.TextTransparency=1; overlay.Text="Falling asleep..."; overlay.TextColor3=cream; overlay.Font=Enum.Font.GothamBold; overlay.TextSize=32; overlay.ZIndex=10; overlay.Parent=gui
-gui.IgnoreGuiInset=true
+overlay.TextTransparency=1; overlay.Text="Falling asleep..."; overlay.TextColor3=cream; overlay.Font=Enum.Font.GothamBold; overlay.TextSize=32; overlay.ZIndex=10; overlay.Parent=fadeGui
 local demo=false
 local function isEssential(key) return table.find(Dream.essentials,key)~=nil end
 local activities = {
@@ -158,7 +162,7 @@ local function refresh()
 			if answers[key] then done+=1 end
 			table.insert(parts,key..(if answers[key] then " ✓" else " ·"))
 		end
-		progress.Text="Key choices "..done.." / "..#Dream.essentials.." • "..table.concat(parts,"  ")..(if done==#Dream.essentials then "\nYour bed is ready. Other activities are optional." else "")
+		progress.Text="Key choices "..done.." / "..#Dream.essentials.." • "..table.concat(parts,"  ")..(if done==#Dream.essentials then "\nBed is ready! (extras optional)" else "")
 		return
 	end
 	local count=0; for _ in answers do count+=1 end
@@ -358,7 +362,7 @@ close.Activated:Connect(function() if not busy then dialog.Visible=false end end
 setCurtains(false); setCandle(true); setTV(false)
 repeat task.wait(0.2) until player:GetAttribute("StartedGame") and not player.PlayerGui:FindFirstChild("StartScreen")
 remote=game:GetService("ReplicatedStorage"):WaitForChild("BedtimeChoice",15)
-if not remote then gui:Destroy(); root:Destroy(); return end
+if not remote then gui:Destroy(); fadeGui:Destroy(); root:Destroy(); return end
 demo=ReplicatedStorage:GetAttribute("DemoMode")==true
 if demo then
 	for _,p in prompts do if isEssential(p.ObjectText) then p.ObjectText=p.ObjectText.." • key choice" end end
@@ -396,7 +400,7 @@ while gui.Parent do
 	if not completed then
 		local elapsed=os.clock()-startedAt
 		local minutes=math.min(60,math.floor(elapsed/5))
-		clock.Text=string.format("%d:%02d PM • %s",10+math.floor(minutes/60),minutes%60,if demo then "Demo: make 3 key choices, then sleep" elseif elapsed<300 then "Bedtime in "..math.ceil((300-elapsed)/60).." min" else "Ready for bed")
+		clock.Text=string.format("%d:%02d PM • %s",10+math.floor(minutes/60),minutes%60,if demo then "Demo: 3 key choices, then bed" elseif elapsed<300 then "Bedtime in "..math.ceil((300-elapsed)/60).." min" else "Ready for bed")
 		Lighting.ClockTime=18.5+3.5*math.min(elapsed/45,1)
 	end
 	task.wait(1)
