@@ -42,8 +42,10 @@ def ask_gemini(prompt: str) -> str:
     try:
         response = gemini_client.interactions.create(model=GEMINI_MODEL, input=prompt)
         return response.output_text
-    except AttributeError:
-        # Older google-genai versions only expose models.generate_content.
+    except Exception as error:  # noqa: BLE001
+        # Older SDKs lack the interactions API, and some keys/models only work
+        # with generate_content, so fall back to the standard call.
+        print("Gemini interactions failed, trying generate_content:", error)
         response = gemini_client.models.generate_content(model=GEMINI_MODEL, contents=prompt)
         return response.text
 
