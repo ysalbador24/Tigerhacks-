@@ -58,12 +58,14 @@ Every feature is optional. The game falls back to scripted text and skips stats 
 7. Check `https://YOUR-IP-WITH-DASHES.sslip.io/health`. It should show `"database": true, "gemini": true`.
 
 ## 3. Connect the game
-At the top of `src/server/Bedtime.server.luau`:
+Copy `src/server/BackendConfig.example.luau` to `src/server/BackendConfig.luau` and fill it in:
 ```lua
-local BACKEND_URL = "https://YOUR-IP-WITH-DASHES.sslip.io"
-local GAME_KEY = "same value as GAME_API_KEY"
+return {
+	url = "https://YOUR-IP-WITH-DASHES.sslip.io",
+	gameKey = "same value as GAME_API_KEY",
+}
 ```
-Don't commit the real `GAME_KEY`. HTTP requests are enabled through `default.project.json`.
+`BackendConfig.luau` is ignored by git, so the URL and key never get committed. Rojo still syncs it into Studio. HTTP requests are enabled through `default.project.json`.
 
 ## 4. Demo
 Open `https://YOUR-IP-WITH-DASHES.sslip.io/dashboard` on a laptop next to the game. Every night a judge plays shows up within 5 seconds.
@@ -71,6 +73,8 @@ Open `https://YOUR-IP-WITH-DASHES.sslip.io/dashboard` on a laptop next to the ga
 ## Local development
 ```bash
 cd backend/backend && python3 -m venv venv && venv/bin/pip install -r requirements.txt
-cp .env.example .env   # DATABASE_URL can point at any Postgres, or leave it empty
+cp .env.example .env        # fill in; the database URL can point at any Postgres, or leave it empty
+venv/bin/python check_setup.py   # tells you what's connected and how to fix what isn't
 venv/bin/uvicorn main:app --reload
 ```
+Roblox can't reach `localhost`, so use `ngrok http 8000` and put the ngrok URL in `BackendConfig.luau`.

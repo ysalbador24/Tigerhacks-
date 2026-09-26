@@ -46,7 +46,7 @@ Each request waits up to 4 seconds, then the game falls back to scripted text. E
 To enable Gemini:
 1. Run the backend: `cd backend/backend && uvicorn main:app --port 8000`, with `GEMINI_API_KEY` in `.env`. You can also set `GEMINI_MODEL`.
 2. Roblox cannot reach `localhost`. Expose the backend with a public tunnel (for example `ngrok http 8000`).
-3. Set `BACKEND_URL = "https://<your-tunnel>"` at the top of `src/server/Bedtime.server.luau`, with no trailing slash.
+3. Copy `src/server/BackendConfig.example.luau` to `BackendConfig.luau` and set `url` (and `gameKey`). Git ignores that file.
 4. HTTP requests are enabled through `default.project.json` (`HttpService.HttpEnabled`). If they aren't, turn on Game Settings → Security → Allow HTTP Requests.
 
 ## Test checklist (Studio)

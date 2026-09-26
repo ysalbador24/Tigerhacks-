@@ -10,13 +10,19 @@ local Dream = require(Shared:WaitForChild("Dream"))
 -- habits are played, not clicked. Set false for the full routine (all
 -- activities and five minutes of evening before bed).
 local DEMO_MODE = true
--- Public base URL of backend/backend/main.py, e.g. "https://abc123.ngrok-free.app".
--- Gemini writes the dream's notifications and Barb's morning report. Leave empty
--- to use the scripted versions. Requires HttpService.HttpEnabled.
-local BACKEND_URL = ""
+-- Backend connection lives in src/server/BackendConfig.luau, which git ignores
+-- (copy BackendConfig.example.luau). Without it, the game uses scripted text only.
+local config = {}
+local configModule = script.Parent:FindFirstChild("BackendConfig")
+if configModule then
+	local ok, loaded = pcall(require, configModule)
+	if ok and type(loaded) == "table" then config = loaded else warn("BackendConfig could not be loaded:", loaded) end
+end
+-- Public base URL of backend/backend/main.py, e.g. "https://abc123.ngrok-free.app" (no trailing slash).
+local BACKEND_URL = string.gsub(if type(config.url) == "string" then config.url else "", "/+$", "")
 local BACKEND_TIMEOUT = 4
--- Must match GAME_API_KEY in the backend's .env (protects POST /nights). Don't commit the real value.
-local GAME_KEY = ""
+-- Must match GAME_API_KEY in the backend's .env (protects POST /nights).
+local GAME_KEY = if type(config.gameKey) == "string" then config.gameKey else ""
 ReplicatedStorage:SetAttribute("DemoMode", DEMO_MODE)
 
 local remote = Instance.new("RemoteFunction")
