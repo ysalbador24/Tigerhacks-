@@ -812,7 +812,7 @@ local started = false
 
 startButton.MouseButton1Click:Connect(function()
 
-	if started then
+	if started or startButton.TextTransparency > 0 then
 		return
 	end
 
@@ -879,9 +879,52 @@ startButton.MouseButton1Click:Connect(function()
 	-- REMOVE START SCREEN
 	--------------------------------------------------
 
-	screenGui:Destroy()
+	-- Bound the entire handshake, including a server invocation that never returns.
+	local startCFrame
+	local character
+	local finished = false
+	local cancelled = false
+	local startupError
+	task.spawn(function()
+		local ok, err = pcall(function()
+			local startGame = game:GetService("ReplicatedStorage"):WaitForChild("StartGame", 10)
+			assert(startGame, "StartGame is unavailable")
+			repeat
+				if cancelled then return end
+				character = player.Character
+				if character and character:GetAttribute("BedroomReady") then
+					startCFrame = startGame:InvokeServer()
+				end
+				if not startCFrame then task.wait(0.1) end
+			until startCFrame
+		end)
+		if not ok then startupError = err end
+		finished = true
+	end)
+	local deadline = os.clock() + 12
+	repeat task.wait() until finished or os.clock() >= deadline
+	if not finished or startupError or not startCFrame then
+		cancelled = true
+		warn("Unable to start game: " .. tostring(startupError or "startup timed out"))
+		fade:Destroy()
+		subtitle.Text = "Room could not load. Please try again."
+		startButton.Text = "RETRY"
+		startButton.Active = true
+		started = false
+		return
+	end
 
-	-- Later, your team can start the actual game here.
+	local camera = workspace.CurrentCamera
+	local humanoid = character:WaitForChild("Humanoid")
+	player.CameraMinZoomDistance = 0.5
+	player.CameraMaxZoomDistance = 12
+	camera.CameraSubject = humanoid
+	camera.CameraType = Enum.CameraType.Custom
+	local focus = startCFrame.Position + Vector3.new(0, 2, 0)
+	camera.CFrame = CFrame.lookAt(focus - startCFrame.LookVector * 8 + Vector3.new(0, 2, 0), focus + startCFrame.LookVector * 8)
+	background.Visible = false
+	tween(fade, 0.6, { BackgroundTransparency = 1 }).Completed:Wait()
+	screenGui:Destroy()
 end)
 
 --------------------------------------------------

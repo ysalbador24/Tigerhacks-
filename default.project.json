@@ -2,19 +2,16 @@
   "name": "Tigerhacks-",
   "tree": {
     "$className": "DataModel",
-
     "ReplicatedStorage": {
       "Shared": {
         "$path": "src/shared"
       }
     },
-
     "ServerScriptService": {
       "Server": {
         "$path": "src/server"
       }
     },
-
     "StarterPlayer": {
       "StarterPlayerScripts": {
         "Client": {
@@ -22,31 +19,28 @@
         }
       }
     },
-
     "Workspace": {
       "$properties": {
         "FilteringEnabled": true
       },
-      "Baseplate": {
-        "$className": "Part",
+      "SpawnLocation": {
+        "$className": "SpawnLocation",
         "$properties": {
           "Anchored": true,
-          "Color": [
-            0.38823,
-            0.37254,
-            0.38823
-          ],
-          "Locked": true,
+          "Neutral": true,
+          "Transparency": 1,
+          "CanCollide": false,
           "Position": [
-            0,
-            -10,
-            0
+            -101,
+            15.5,
+            -139
           ],
           "Size": [
-            512,
-            20,
-            512
-          ]
+            2,
+            1,
+            2
+          ],
+          "Duration": 0
         }
       }
     },
