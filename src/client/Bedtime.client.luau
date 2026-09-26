@@ -73,6 +73,8 @@ end
 local first, second, close = button("",0.56),button("",0.73),button("Back to the room",0.9)
 close.Size=UDim2.fromScale(0.86,0.08)
 story.TextYAlignment=Enum.TextYAlignment.Top
+local function capText(object,max) local c=Instance.new("UITextSizeConstraint"); c.MaxTextSize=max; c.MinTextSize=9; c.Parent=object end
+capText(story,17)
 -- The morning screen needs more room than a single choice.
 local function layout(morning)
 	dialog.Position=if morning then UDim2.fromScale(0.15,0.06) else UDim2.fromScale(0.2,0.32)
@@ -80,7 +82,8 @@ local function layout(morning)
 	title.Size=if morning then UDim2.fromScale(0.9,0.08) else UDim2.fromScale(0.9,0.13)
 	story.Position=if morning then UDim2.fromScale(0.05,0.11) else UDim2.fromScale(0.05,0.18)
 	story.Size=if morning then UDim2.fromScale(0.9,0.72) else UDim2.fromScale(0.9,0.36)
-	story.TextSize=if morning then 16 else 18
+	story.TextSize=18
+	story.TextScaled=morning -- long morning reports shrink to fit (capped below)
 	first.Position=if morning then UDim2.fromScale(0.07,0.85) else UDim2.fromScale(0.07,0.56)
 	first.Size=if morning then UDim2.fromScale(0.86,0.1) else UDim2.fromScale(0.86,0.14)
 end
@@ -91,7 +94,9 @@ local dreamTitle=label(dreamPanel,"The Dream • Reach the morning light",UDim2.
 dreamTitle.Font=Enum.Font.GothamBold
 local dreamLines=label(dreamPanel,"",UDim2.fromScale(0.05,0.18),UDim2.fromScale(0.9,0.52)); dreamLines.TextSize=15
 dreamLines.TextXAlignment=Enum.TextXAlignment.Left; dreamLines.TextYAlignment=Enum.TextYAlignment.Top
+dreamLines.TextScaled=true; capText(dreamLines,15)
 local dreamStatus=label(dreamPanel,"Stumbles: 0",UDim2.fromScale(0.05,0.72),UDim2.fromScale(0.55,0.22)); dreamStatus.TextSize=15
+dreamStatus.TextXAlignment=Enum.TextXAlignment.Left
 local wakeButton=Instance.new("TextButton"); wakeButton.Text="Wake up now"; wakeButton.Position=UDim2.fromScale(0.62,0.74); wakeButton.Size=UDim2.fromScale(0.33,0.2)
 wakeButton.BackgroundColor3=Color3.fromRGB(183,203,190); wakeButton.TextColor3=ink; wakeButton.Font=Enum.Font.Gotham; wakeButton.TextSize=14; wakeButton.Visible=false; wakeButton.Parent=dreamPanel
 local wakeCorner=Instance.new("UICorner"); wakeCorner.CornerRadius=UDim.new(0,8); wakeCorner.Parent=wakeButton
@@ -142,7 +147,7 @@ local function request(key,option)
 		if ok then result=value end
 		done=true
 	end)
-	local deadline=os.clock()+8
+	local deadline=os.clock()+15 -- server may wait on Gemini and the text filter
 	repeat task.wait() until done or os.clock()>deadline
 	return result
 end
@@ -237,8 +242,9 @@ local function showMorning(result)
 	story.Text=result.feeling.." • Mood: "..result.wellbeing.moodLabel
 		..string.format(" • Simulated sleep: %dh %02dm",math.floor(result.wellbeing.sleepMinutes/60),result.wellbeing.sleepMinutes%60)
 		.." • Stumbles: "..result.stumbles
+		.." • Sheep counted: "..result.sheep.." / "..result.sheepTotal
 		.."\n\nYour choices shaped the dream:\n"..table.concat(lines,"\n")
-		.."\n\n"..result.reflectionSource..": "..result.reflection
+		.."\n\n"..result.reflectionSource.." says: "..result.reflection
 		.."\n\n"..result.suggestion
 		.."\n\nBased on CDC sleep tips: turn off screens before bed, keep your room dark, quiet, and cool, and avoid large meals late at night. Dream Stability is a game outcome, not a measure of your health."
 	current="Replay"; first.Text="Play another evening"; first.Visible=true; second.Visible=false; close.Visible=false
@@ -253,9 +259,14 @@ function runDream(config)
 	dialog.Visible=false; hud.Visible=false; feedbackPanel.Visible=false
 	fade(true,"Falling asleep...")
 	local wakeRequest=nil
+	local stumbles, sheepCount=0,0
+	local function status(extra)
+		dreamStatus.Text="Sheep: "..sheepCount.." / "..(config.sheepCountable or 0).." • Stumbles: "..stumbles..(if extra then "\n"..extra else "")
+	end
 	local course=DreamCourse.build(config,{
 		onGoal=function() wakeRequest="goal" end,
-		onBuzz=function() dreamStatus.Text="Bzzt! A notification pulled you back." end,
+		onBuzz=function(text) status(text) end,
+		onSheep=function(count,name) sheepCount=count; status(name.." counted!") end,
 	})
 	if not request("EnterDream") then
 		course.destroy(); fade(false)
@@ -266,9 +277,10 @@ function runDream(config)
 	local lines={}
 	for _,line in config.lines do table.insert(lines,"• "..line) end
 	dreamLines.Text=table.concat(lines,"\n")
-	dreamStatus.Text="Stumbles: 0"; wakeButton.Visible=false; dreamPanel.Visible=true
+	dreamLines.Text=dreamLines.Text.."\n• Count the sheep. Walk up to one to count it."
+	status(); wakeButton.Visible=false; dreamPanel.Visible=true
 	local stumbleConnection=player:GetAttributeChangedSignal("DreamStumbles"):Connect(function()
-		dreamStatus.Text="Stumbles: "..(player:GetAttribute("DreamStumbles") or 0)
+		stumbles=player:GetAttribute("DreamStumbles") or 0; status("Whoops. Back to the checkpoint.")
 	end)
 	local wakeConnection=wakeButton.Activated:Connect(function() wakeRequest="early" end)
 	fade(false)
@@ -278,7 +290,7 @@ function runDream(config)
 		if not wakeButton.Visible and os.clock()-dreamStart>=Dream.earlyWakeSeconds then wakeButton.Visible=true end
 		if wakeRequest then
 			fade(true,"Waking up...")
-			result=request("Wake",if wakeRequest=="early" then "early" else nil)
+			result=request("Wake",{early=wakeRequest=="early",sheep=course.sheepCounted()})
 			if not result then fade(false); wakeRequest=nil; course.resetGoal() end
 		end
 		task.wait(0.1)

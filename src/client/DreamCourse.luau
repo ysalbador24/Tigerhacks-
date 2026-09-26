@@ -19,12 +19,22 @@ local glare = {
 	sky = Color3.fromRGB(235, 240, 255),
 }
 local notificationTexts = {
-	"3 new messages", "Just one more video", "You were tagged in a post",
-	"Group chat: 47 unread", "Your streak ends soon!", "Someone liked your photo",
-	"Breaking: you won't believe this", "Live now: watch?", "Reminder: reply to Sam",
+	"Group chat: 47 unread", "Your ex liked a post from 2019", "Mom: call me. not urgent. URGENT",
+	"Your streak dies in 3 min!!", "Someone is typing...", "Breaking: a raccoon learned to skateboard",
+	"Rate your last 900 videos", "Screen time: 11 hrs (up 40%)", "Reply to Sam from Tuesday",
+}
+local algorithmTaunts = {
+	"Just one more video!", "You up?", "Sleep is for people without Wi-Fi",
+	"Autoplay in 3... 2... 1...", "Don't go! I have 47 more reels", "Your screen time is my love language",
+}
+local sheepGear = {
+	Scrolling = {size = Vector3.new(0.9, 1.4, 0.2), offset = CFrame.new(0, 0.9, -3.1), color = Color3.fromRGB(96, 170, 235), material = Enum.Material.Neon},
+	Squinting = {size = Vector3.new(1.8, 0.45, 0.3), offset = CFrame.new(0, 1.35, -2.75), color = Color3.fromRGB(20, 20, 24), material = Enum.Material.SmoothPlastic},
+	Snacking = {size = Vector3.new(1.4, 0.25, 1.4), offset = CFrame.new(0, -0.1, -3.2), color = Color3.fromRGB(235, 160, 70), material = Enum.Material.SmoothPlastic},
 }
 
--- config: {flags = {...}}; callbacks: {onGoal = fn(), onBuzz = fn()}
+-- config: {flags, sheep, notifications?}
+-- callbacks: {onGoal = fn(), onBuzz = fn(text), onSheep = fn(count, name)}
 function DreamCourse.build(config, callbacks)
 	local flags = config.flags or {}
 	local palette = if flags.Flicker then glare else calm
@@ -152,7 +162,8 @@ function DreamCourse.build(config, callbacks)
 				local text = Instance.new("TextLabel")
 				text.Size = UDim2.fromScale(1, 1)
 				text.BackgroundTransparency = 1
-				text.Text = notificationTexts[(n - 1) % #notificationTexts + 1]
+				local texts = if config.notifications and #config.notifications > 0 then config.notifications else notificationTexts
+				text.Text = texts[(n - 1) % #texts + 1]
 				text.TextColor3 = Color3.new(1, 1, 1)
 				text.Font = Enum.Font.GothamBold
 				text.TextScaled = true
@@ -162,7 +173,90 @@ function DreamCourse.build(config, callbacks)
 		end
 	end
 
-	-- Dream lighting (restored on destroy).
+	local function bubble(parent, text, height)
+		local board = Instance.new("BillboardGui")
+		board.Size = UDim2.fromOffset(200, 44)
+		board.StudsOffset = Vector3.new(0, height, 0)
+		board.MaxDistance = 60
+		board.Parent = parent
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.fromScale(1, 1)
+		label.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+		label.BackgroundTransparency = 0.1
+		label.TextColor3 = Color3.fromRGB(40, 36, 50)
+		label.Font = Enum.Font.GothamBold
+		label.TextScaled = true
+		label.Text = text
+		label.Parent = board
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 12)
+		corner.Parent = label
+		return label
+	end
+
+	-- Counting sheep: walk up to a sheep to count it. Distracted sheep can't be counted.
+	local sheepList = {}
+	local counted = 0
+	for index, info in config.sheep or {} do
+		local tile = tiles[info.platform - 1]
+		if tile then
+			local model = Instance.new("Model")
+			model.Name = "Sheep_" .. info.name
+			local body = part("Wool", Vector3.new(3.4, 3, 4), Vector3.zero, Color3.fromRGB(250, 248, 240), Enum.Material.Fabric)
+			body.Shape = Enum.PartType.Ball
+			local pieces = {{body, CFrame.new()}}
+			table.insert(pieces, {part("Head", Vector3.new(1.5, 1.6, 1.5), Vector3.zero, Color3.fromRGB(60, 56, 62)), CFrame.new(0, 0.8, -2.2)})
+			for _, leg in {{-0.9, -0.9}, {0.9, -0.9}, {-0.9, 0.9}, {0.9, 0.9}} do
+				table.insert(pieces, {part("Leg", Vector3.new(0.45, 1.4, 0.45), Vector3.zero, Color3.fromRGB(60, 56, 62)), CFrame.new(leg[1], -1.6, leg[2])})
+			end
+			local gear = info.kind and sheepGear[info.kind]
+			if gear then
+				table.insert(pieces, {part(info.kind, gear.size, Vector3.zero, gear.color, gear.material), gear.offset})
+			end
+			for _, piece in pieces do
+				piece[1].CanCollide = false
+				piece[1].CanTouch = false
+				piece[1].Parent = model
+			end
+			model.PrimaryPart = body
+			model.Parent = folder
+			bubble(body, if info.kind then info.name .. ": " .. info.label else info.name, 3.2)
+			table.insert(sheepList, {model = model, pieces = pieces, tile = tile, info = info, side = if index % 2 == 0 then -3 else 3, phase = index * 0.7})
+		end
+	end
+
+	-- Kept scrolling: The Algorithm, a giant phone with googly eyes, follows you.
+	local algorithm
+	if flags.Algorithm then
+		local screen = part("TheAlgorithm", Vector3.new(7, 12, 1), Dream.world(Vector3.new(0, 9, 30)), Color3.fromRGB(25, 25, 32), Enum.Material.SmoothPlastic)
+		screen.CanCollide = false
+		screen.CanTouch = false
+		local display = Instance.new("SurfaceGui")
+		display.Face = Enum.NormalId.Front
+		display.CanvasSize = Vector2.new(280, 480)
+		display.Parent = screen
+		local feed = Instance.new("TextLabel")
+		feed.Size = UDim2.fromScale(1, 1)
+		feed.BackgroundColor3 = Color3.fromRGB(255, 70, 110)
+		feed.TextColor3 = Color3.new(1, 1, 1)
+		feed.Font = Enum.Font.GothamBlack
+		feed.TextScaled = true
+		feed.Text = "FOR\nYOU\n▶"
+		feed.Parent = display
+		local eyes = {}
+		for _, x in {-1.7, 1.7} do
+			local eye = part("GooglyEye", Vector3.new(2.4, 2.4, 2.4), screen.Position, Color3.new(1, 1, 1))
+			eye.Shape = Enum.PartType.Ball
+			eye.CanCollide = false
+			eye.CanTouch = false
+			local pupil = part("Pupil", Vector3.new(1.1, 1.1, 1.1), screen.Position, Color3.new(0, 0, 0))
+			pupil.Shape = Enum.PartType.Ball
+			pupil.CanCollide = false
+			pupil.CanTouch = false
+			table.insert(eyes, {eye = eye, pupil = pupil, x = x})
+		end
+		algorithm = {screen = screen, eyes = eyes, taunt = bubble(screen, algorithmTaunts[1], 8.5), tauntIndex = 1, nextTaunt = 3, frozenUntil = 0, startAt = 4}
+	end
 	local saved = {
 		ClockTime = Lighting.ClockTime, Brightness = Lighting.Brightness, Ambient = Lighting.Ambient,
 		OutdoorAmbient = Lighting.OutdoorAmbient, FogColor = Lighting.FogColor, FogEnd = Lighting.FogEnd,
@@ -205,7 +299,8 @@ function DreamCourse.build(config, callbacks)
 		return player.Character and player.Character:FindFirstChildOfClass("Humanoid")
 	end
 	local savedSpeed = humanoid() and humanoid().WalkSpeed or 16
-	if flags.Heavy and humanoid() then humanoid().WalkSpeed = 12 end
+	local baseSpeed = if flags.Heavy then 12 else savedSpeed
+	if humanoid() then humanoid().WalkSpeed = baseSpeed end
 
 	-- Per-frame: move cards, check knockback, check the goal.
 	local clock = 0
@@ -223,9 +318,57 @@ function DreamCourse.build(config, callbacks)
 				if math.abs(delta.X) < 4.5 and math.abs(delta.Y) < 4.5 and math.abs(delta.Z) < 2.5 then
 					lastBuzz = clock
 					root.AssemblyLinearVelocity = Vector3.new(0, 30, 32)
-					if callbacks.onBuzz then callbacks.onBuzz() end
+					if callbacks.onBuzz then callbacks.onBuzz("Bzzt! A notification pulled you back.") end
 				end
 			end
+		end
+		-- Sheep ride along on their tiles (tiles can drift) and hop in place.
+		for _, sheep in sheepList do
+			if sheep.model.Parent then
+				local hop = math.abs(math.sin(clock * 3 + sheep.phase)) * 0.8
+				local base = CFrame.lookAt(sheep.tile.Position, sheep.tile.Position + Vector3.new(0, 0, 1)) * CFrame.new(sheep.side, sheep.tile.Size.Y / 2 + 2.4 + hop, 0)
+				for _, piece in sheep.pieces do piece[1].CFrame = base * piece[2] end
+				if root and not sheep.info.kind and not sheep.counted and (root.Position - base.Position).Magnitude < 6 then
+					sheep.counted = true
+					counted += 1
+					if callbacks.onSheep then callbacks.onSheep(counted, sheep.info.name) end
+					local model = sheep.model
+					task.delay(0.6, function() model:Destroy() end)
+					sheep.pieces = {}
+				end
+			end
+		end
+		-- The Algorithm drifts toward you; if it catches you, you're stuck watching a video.
+		if algorithm and root and clock > algorithm.startAt then
+			local screen = algorithm.screen
+			local target = root.Position + Vector3.new(0, 5, 0)
+			local toTarget = target - screen.Position
+			local distance = toTarget.Magnitude
+			local position = screen.Position
+			if distance > 0.1 then position += toTarget.Unit * math.min(distance, 9 * dt) end
+			position += Vector3.new(0, math.sin(clock * 2) * 0.03, 0)
+			screen.CFrame = CFrame.lookAt(position, Vector3.new(root.Position.X, position.Y, root.Position.Z))
+			for _, eye in algorithm.eyes do
+				eye.eye.CFrame = screen.CFrame * CFrame.new(eye.x, 3.5, -0.9)
+				local wobble = Vector3.new(math.sin(clock * 7 + eye.x) * 0.4, math.cos(clock * 5 + eye.x) * 0.4, -0.9)
+				eye.pupil.CFrame = eye.eye.CFrame * CFrame.new(wobble)
+			end
+			if clock >= algorithm.nextTaunt then
+				algorithm.tauntIndex = algorithm.tauntIndex % #algorithmTaunts + 1
+				algorithm.taunt.Text = algorithmTaunts[algorithm.tauntIndex]
+				algorithm.nextTaunt = clock + 3
+			end
+			local human = humanoid()
+			if distance < 6 and clock > algorithm.frozenUntil + 2 and human then
+				algorithm.frozenUntil = clock + 2
+				algorithm.taunt.Text = "Caught you! Enjoy this 45-minute video essay."
+				algorithm.nextTaunt = clock + 3
+				human.WalkSpeed = 0
+				if callbacks.onBuzz then callbacks.onBuzz("The Algorithm caught you. Watching a video essay...") end
+				-- Knock it back so you can escape once you can move again.
+				screen.Position = screen.Position + Vector3.new(0, 0, 30)
+			end
+			if human and human.WalkSpeed == 0 and clock > algorithm.frozenUntil then human.WalkSpeed = baseSpeed end
 		end
 		sun.CFrame = CFrame.new(sun.Position) * CFrame.Angles(0, clock * 0.3, 0)
 		if root and not reachedGoal and (root.Position - sun.Position).Magnitude <= Dream.goalRadius then
@@ -238,6 +381,9 @@ function DreamCourse.build(config, callbacks)
 	-- Allows the goal to trigger again if the server rejected the first attempt.
 	function controller.resetGoal()
 		reachedGoal = false
+	end
+	function controller.sheepCounted()
+		return counted
 	end
 	function controller.destroy()
 		if not alive then return end

@@ -58,21 +58,21 @@ end
 local effects = {
 	Phone = {
 		{flag = nil, line = "Phone away: the dream path stays quiet."},
-		{flag = "Notifications", line = "Kept scrolling: notifications swarm your path and knock you back."},
+		{flag = "Notifications", line = "Kept scrolling: The Algorithm chases you, notifications block the path, and 4 sheep are doomscrolling."},
 	},
 	Lighting = {
 		{flag = nil, line = "Dim lights: a calm, steady night sky."},
-		{flag = "Flicker", line = "Bright light: the dream glares and platforms blink out."},
+		{flag = "Flicker", line = "Bright light: the dream glares, platforms blink out, and 3 sheep need sunglasses."},
 	},
 	Food = {
 		{flag = nil, line = "Finished eating: the path holds still."},
-		{flag = "Heavy", line = "Late heavy meal: you feel sluggish and the path won't sit still."},
+		{flag = "Heavy", line = "Late heavy meal: you're sluggish, the path won't sit still, and 3 sheep are in a food coma."},
 	},
 }
 
 -- Short hint shown in the room right after an essential choice.
 local hints = {
-	Phone = {"Tonight's dream: a quiet path.", "Tonight's dream: notifications will chase you."},
+	Phone = {"Tonight's dream: a quiet path.", "Tonight's dream: the Algorithm will follow you in."},
 	Lighting = {"Tonight's dream: a calm night sky.", "Tonight's dream: glaring light and flickering platforms."},
 	Food = {"Tonight's dream: steady footing.", "Tonight's dream: sluggish steps on a drifting path."},
 }
@@ -82,12 +82,41 @@ function Dream.hint(key, option)
 	return options and options[option]
 end
 
+-- Counting sheep: one sheep stands on each tile (platforms 2-11). Each
+-- unhealthy key choice distracts a fixed set of them so they can't be counted.
+Dream.sheepNames = {
+	"Gary", "Baaarbara", "Wooliam", "Lamb-da", "Fleece Witherspoon",
+	"Baaaxter", "Ewe-nice", "Shaun Again", "Count Woolula", "Sheepy McSheepface",
+}
+local distractions = {
+	Phone = {sheep = {1, 4, 7, 10}, kind = "Scrolling", label = "brb, one more reel"},
+	Lighting = {sheep = {2, 5, 8}, kind = "Squinting", label = "too bright. can't count."},
+	Food = {sheep = {3, 6, 9}, kind = "Snacking", label = "digesting... do not disturb"},
+}
+
 -- Deterministic dream setup from the player's answers.
 function Dream.configure(answers)
-	local config = {flags = {}, lines = {}}
+	local config = {flags = {}, lines = {}, sheep = {}}
+	for index, name in Dream.sheepNames do
+		config.sheep[index] = {name = name, platform = index + 1}
+	end
+	for _, key in Dream.essentials do
+		local distraction = distractions[key]
+		if answers[key] == 2 then
+			for _, index in distraction.sheep do
+				config.sheep[index].kind = distraction.kind
+				config.sheep[index].label = distraction.label
+			end
+		end
+	end
+	config.sheepCountable = 0
+	for _, sheep in config.sheep do
+		if not sheep.kind then config.sheepCountable += 1 end
+	end
 	for _, key in Dream.essentials do
 		local effect = effects[key][answers[key] or 1]
 		if effect.flag then config.flags[effect.flag] = true end
+		if key == "Phone" and effect.flag then config.flags.Algorithm = true end
 		table.insert(config.lines, effect.line)
 	end
 	-- Leaving notifications on adds more interruptions to the swarm.

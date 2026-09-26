@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
+local TextService = game:GetService("TextService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Mood = require(Shared:WaitForChild("EveningMood"))
 local Dream = require(Shared:WaitForChild("Dream"))
@@ -8,10 +9,11 @@ local Dream = require(Shared:WaitForChild("Dream"))
 -- Demo mode: three key choices, then sleep immediately. Set false for the full
 -- routine (all activities and five minutes of evening before bed).
 local DEMO_MODE = true
--- Public URL of backend/backend/main.py (e.g. an ngrok tunnel ending in /reflection).
--- Leave empty to always use the scripted reflection. Requires HttpService.HttpEnabled.
-local REFLECTION_URL = ""
-local REFLECTION_TIMEOUT = 4
+-- Public base URL of backend/backend/main.py, e.g. "https://abc123.ngrok-free.app".
+-- Gemini writes the dream's notifications and Barb's morning report. Leave empty
+-- to use the scripted versions. Requires HttpService.HttpEnabled.
+local BACKEND_URL = ""
+local BACKEND_TIMEOUT = 4
 ReplicatedStorage:SetAttribute("DemoMode", DEMO_MODE)
 
 local remote = Instance.new("RemoteFunction")
@@ -67,16 +69,16 @@ end
 -- Scripted reflection: always available, tied to the exact choices made.
 local reflections = {
 	Phone = {
-		"You put your phone away, so your dream path stayed quiet.",
-		"Scrolling was fun in the moment, but notifications chased you through the dream.",
+		"Your phone stayed on the desk, so nothing chased you tonight.",
+		"You kept scrolling, so the Algorithm followed you into your dream. Rude.",
 	},
 	Lighting = {
-		"Dimming the lights kept the dream calm and steady.",
-		"The bright light kept things alert, so the dream glared and flickered.",
+		"Soft lamps meant a soft, starry dream.",
+		"The big light stayed on, so your dream went full interrogation room.",
 	},
 	Food = {
-		"Finishing dinner earlier kept the dream path still.",
-		"The late heavy meal made the dream feel sluggish and restless.",
+		"Dinner was done early, so the path held still.",
+		"That late heavy meal had the whole dream moving like a waterbed.",
 	},
 }
 local suggestions = {
@@ -85,64 +87,102 @@ local suggestions = {
 	Food = "Next night, try finishing your last big meal a bit earlier in the evening.",
 	Notifications = "Next night, try turning on Do Not Disturb so late messages can wait.",
 }
-local function scriptedReflection(answers)
-	local lines, suggestion = {}, nil
+local function scriptedReflection(answers, sheep, sheepTotal)
+	local lines, suggestion = {"Baaa-rb here."}, nil
 	for _, key in Dream.essentials do
 		local option = answers[key] or 1
 		table.insert(lines, reflections[key][option])
 		if option == 2 and not suggestion then suggestion = suggestions[key] end
 	end
+	table.insert(lines, string.format("You counted %d of %d sheep%s", sheep, sheepTotal, if sheep == sheepTotal then ". Personal best, probably." else ". The rest were busy."))
 	if not suggestion and answers.Notifications == 2 then suggestion = suggestions.Notifications end
 	suggestion = suggestion or "Next night, keep the same routine. A consistent bedtime helps too."
 	return table.concat(lines, " "), suggestion
 end
 
--- Ask the Gemini backend for a reflection; fall back if it is slow or fails.
-local function geminiReflection(answers, config, stumbles, suggestion)
-	if REFLECTION_URL == "" then return nil end
-	local chosen = {}
-	for key, option in answers do
-		if choices[key] then table.insert(chosen, choices[key][option]) end
-	end
+-- POST to the Gemini backend, waiting at most BACKEND_TIMEOUT seconds.
+local function postBackend(path, payload)
+	if BACKEND_URL == "" then return nil end
 	local reply
 	task.spawn(function()
 		local ok, response = pcall(function()
 			return HttpService:RequestAsync({
-				Url = REFLECTION_URL,
+				Url = BACKEND_URL .. path,
 				Method = "POST",
 				Headers = {["Content-Type"] = "application/json"},
-				Body = HttpService:JSONEncode({choices = chosen, dream = config.lines, stumbles = stumbles, suggestion = suggestion}),
+				Body = HttpService:JSONEncode(payload),
 			})
 		end)
 		if ok and response.Success then
 			local decoded, data = pcall(HttpService.JSONDecode, HttpService, response.Body)
-			if decoded and type(data) == "table" and type(data.reflection) == "string" and data.reflection ~= "" then
-				reply = string.sub(data.reflection, 1, 500)
-				return
-			end
+			if decoded and type(data) == "table" then reply = data; return end
 		end
+		if not ok then warn("Backend request failed:", response) end
 		reply = false
-		if not ok then warn("Reflection request failed:", response) end
 	end)
-	local deadline = os.clock() + REFLECTION_TIMEOUT
+	local deadline = os.clock() + BACKEND_TIMEOUT
 	while reply == nil and os.clock() < deadline do task.wait(0.1) end
 	return reply or nil
+end
+
+-- AI text is shown in the game, so run it through Roblox's text filter first.
+local function filtered(player, text, maxLength)
+	if type(text) ~= "string" then return nil end
+	text = string.sub(string.gsub(text, "[\r\n]+", " "), 1, maxLength)
+	local ok, result = pcall(function()
+		return TextService:FilterStringAsync(text, player.UserId):GetNonChatStringForBroadcastAsync()
+	end)
+	if ok and result ~= "" then return result end
+	return nil
+end
+
+local function chosenTexts(answers)
+	local chosen = {}
+	for key, option in answers do
+		if choices[key] then table.insert(chosen, choices[key][option]) end
+	end
+	return chosen
+end
+
+-- Gemini writes the notifications that swarm a scrolling player's dream.
+local function geminiNotifications(player, answers)
+	local data = postBackend("/notifications", {choices = chosenTexts(answers)})
+	if not data or type(data.notifications) ~= "table" then return nil end
+	local list = {}
+	for _, text in data.notifications do
+		local clean = filtered(player, text, 48)
+		if clean then table.insert(list, clean) end
+		if #list >= 6 then break end
+	end
+	return if #list >= 3 then list else nil
+end
+
+-- Barb the Sleep Sheep's morning report, written by Gemini.
+local function geminiReflection(player, answers, config, stumbles, sheep, suggestion)
+	local data = postBackend("/reflection", {
+		choices = chosenTexts(answers), dream = config.lines, stumbles = stumbles,
+		sheep = sheep, sheep_total = #config.sheep, suggestion = suggestion,
+	})
+	return data and filtered(player, data.reflection, 500)
 end
 
 local function finishNight(player, session)
 	local wellbeing = Mood.summarize(session.answers)
 	local stability = wellbeing.rest
-	local text, suggestion = scriptedReflection(session.answers)
-	local ai = geminiReflection(session.answers, session.dream, session.stumbles, suggestion)
+	local text, suggestion = scriptedReflection(session.answers, session.sheep, #session.dream.sheep)
+	local ai = geminiReflection(player, session.answers, session.dream, session.stumbles, session.sheep, suggestion)
 	session.phase = "morning"
 	session.result = {
 		score = stability,
 		stability = stability,
 		feeling = if stability >= 75 then "A calm dream" elseif stability >= 50 then "A restless dream" else "A stormy dream",
 		stumbles = session.stumbles,
+		sheep = session.sheep,
+		sheepTotal = #session.dream.sheep,
+		sheepCountable = session.dream.sheepCountable,
 		dreamLines = session.dream.lines,
 		reflection = ai or text,
-		reflectionSource = if ai then "Reflection by Gemini" else "Scripted reflection",
+		reflectionSource = if ai then "Barb the Sleep Sheep (Gemini)" else "Barb the Sleep Sheep",
 		suggestion = suggestion,
 		answers = session.answers,
 		wellbeing = wellbeing,
@@ -177,6 +217,9 @@ remote.OnServerInvoke = function(player, key, option)
 		end
 		session.phase = "ready"
 		session.dream = Dream.configure(session.answers)
+		if session.dream.flags.Notifications then
+			session.dream.notifications = geminiNotifications(player, session.answers)
+		end
 		return {dream = session.dream}
 	end
 	-- The client builds its local course first, then asks to be moved into it.
@@ -196,9 +239,13 @@ remote.OnServerInvoke = function(player, key, option)
 		if session.phase ~= "dream" then return nil end
 		local root = rootOf(player)
 		local reachedGoal = root and (root.Position - Dream.world(Dream.goal)).Magnitude <= Dream.goalRadius + 6
-		local allowedEarly = option == "early" and os.clock() - session.dreamStarted >= Dream.earlyWakeSeconds
+		local info = if type(option) == "table" then option else {}
+		local allowedEarly = info.early == true and os.clock() - session.dreamStarted >= Dream.earlyWakeSeconds
 		if not reachedGoal and not allowedEarly then return nil end
 		session.wokeEarly = not reachedGoal
+		-- Sheep are counted on the client; clamp to what tonight's dream allowed.
+		local sheep = if type(info.sheep) == "number" and info.sheep == info.sheep then math.floor(info.sheep) else 0
+		session.sheep = math.clamp(sheep, 0, session.dream.sheepCountable)
 		return finishNight(player, session)
 	end
 	if session.phase ~= "room" or not choices[key] or (option ~= 1 and option ~= 2) then return nil end
