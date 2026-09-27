@@ -11,7 +11,7 @@ Dream.goalRadius = 14
 -- Seconds before the "wake up now" safety button becomes available.
 Dream.earlyWakeSeconds = 45
 
--- The three choices the two-minute demo requires before sleeping.
+-- Legacy effect keys used by the dream course (not required activities).
 Dream.essentials = {"Phone", "Lighting", "Food"}
 
 -- Platforms are offsets from Dream.origin: {size, position, kind}.
@@ -94,8 +94,18 @@ local distractions = {
 	Food = {sheep = {3, 6, 9}, kind = "Snacking", label = "digesting... do not disturb"},
 }
 
+-- Adapt the single WindDown outcome for the existing phone dream effects.
+-- This copy is never stored as additional scored answers.
+function Dream.effectAnswers(answers)
+	local effects = table.clone(answers)
+	effects.Phone = answers.WindDown
+	effects.Reading = nil
+	return effects
+end
+
 -- Deterministic dream setup from the player's answers.
 function Dream.configure(answers)
+	answers = Dream.effectAnswers(answers)
 	local config = {flags = {}, lines = {}, sheep = {}}
 	for index, name in Dream.sheepNames do
 		config.sheep[index] = {name = name, platform = index + 1}

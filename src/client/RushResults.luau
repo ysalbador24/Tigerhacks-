@@ -38,7 +38,7 @@ function Results.show(player,result,onReplay)
    local barb=Instance.new("Sound") barb.SoundId=id barb.Volume=1 barb.Parent=gui barb:Play()
   end
  end)
- local habits=0 for _,key in {"Phone","Lighting","Food"} do if result.answers[key]==1 then habits+=1 end end
+ local habits=0 for _,key in {"WindDown","Lighting","Food"} do if result.answers[key]==1 then habits+=1 end end
  local firstLine=if result.rush then string.format("%ds TO SPARE  •  %d/3 HABITS",result.secondsLeft,habits) else string.format("%d/3 HEALTHY HABITS",habits)
  text(string.format("%s\n%d/%d SHEEP  •  STABILITY %d",firstLine,result.sheep,result.sheepTotal,result.stability),UDim2.fromScale(.3,.19),UDim2.fromScale(.64,.08),16)
  -- Long Gemini reports stay readable by scrolling rather than shrinking the whole page.

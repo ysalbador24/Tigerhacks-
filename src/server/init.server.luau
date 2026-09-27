@@ -361,6 +361,14 @@ local spawn = workspace:FindFirstChild("SpawnLocation")
 if spawn and spawn:IsA("SpawnLocation") then
 	spawn.Size = Vector3.new(2, 1, 2)
 	spawn.CFrame = bedroomStart
+	spawn.Transparency = 1
+	spawn.CanCollide = false
+	-- The default spawn spiral is a decal, which stays visible on an invisible part.
+	for _, decoration in ipairs(spawn:GetDescendants()) do
+		if decoration:IsA("Decal") or decoration:IsA("Texture") then
+			decoration.Transparency = 1
+		end
+	end
 end
 
 local function prepareCharacter(player, character)
