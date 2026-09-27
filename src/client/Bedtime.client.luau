@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Dream = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Dream"))
 local DreamCourse = require(script.Parent:WaitForChild("DreamCourse"))
 local WindDownAction = require(script.Parent:WaitForChild("WindDownAction"))
+local TVAction = require(script.Parent:WaitForChild("TVAction"))
 local ShowerInteraction = require(script.Parent:WaitForChild("ShowerInteraction"))
 local ReadingInteraction = require(script.Parent:WaitForChild("ReadingInteraction"))
 local BedtimeRush = require(script.Parent:WaitForChild("BedtimeRush"))
@@ -143,6 +144,7 @@ local activities = {
 	{"Shower","Warm water, a soft towel, and a quiet moment to reset.","Take a warm shower","Skip showering",Vector3.new(-128,17,-145)},
 	{"BrushTeeth","Set your toothbrush ready and take a moment for your evening routine.","Brush my teeth","Skip brushing",Vector3.new(-120.5,18,-147.5)},
 	{"WindDown","Settle into the downstairs reading nook for a moment.","Read a book","Scroll on phone",libraryAnchor.Position},
+	{"TV","The TV is still glowing. What feels right for the rest of your evening?","Turn it off","Just one more episode",Vector3.zero},
 }
 local root=Instance.new("Folder"); root.Name="BedtimeInteractions"; root.Parent=workspace
 local function part(name,size,pos,color)
@@ -268,7 +270,9 @@ local function prompt(key,pos,object)
 	p.Triggered:Connect(function() show(key) end); table.insert(prompts,p)
 end
 for _,a in activities do
-	if a[1]=="Notifications" then
+	if a[1]=="TV" then
+		-- The existing TV remote supplies this activity's only prompt.
+	elseif a[1]=="Notifications" then
 		local attachment=Instance.new("Attachment"); attachment.Name="NotificationInteraction"; attachment.Position=Vector3.new(2,0,0); attachment.Parent=phone
 		prompt(a[1],a[5],attachment)
 	else prompt(a[1],a[5]) end
@@ -295,14 +299,58 @@ local function setCandle(on)
 	end
 	if expansion then expansion.InteractiveCandle.CandleJar.RoomControlPrompt.ActionText=if on then "Extinguish" else "Light" end
 end
-local function setTV(on)
+local tvAnimationGeneration=0
+local function setTV(on,immediate)
 	tvOn=on
 	if not expansion then return end
 	local tv=expansion.TelevisionConsole
-	tv.TVScreen.TVDisplay.Enabled=on
-	tv.TVScreen.Material=if on then Enum.Material.Neon else Enum.Material.SmoothPlastic
-	tv.TVScreen.Color=if on then Color3.fromRGB(89,115,102) else Color3.fromRGB(22,28,27)
-	tv.TVRemote.RoomControlPrompt.ActionText=if on then "Turn off" else "Turn on"
+	local screen=tv.TVScreen
+	local display=screen.TVDisplay
+	local titleLabel=display:FindFirstChildWhichIsA("TextLabel")
+	if titleLabel then titleLabel.Text="" end
+	local glow=screen:FindFirstChild("EveningTVGlow")
+	if not glow then
+		glow=Instance.new("PointLight"); glow.Name="EveningTVGlow"; glow.Color=Color3.fromRGB(198,188,230)
+		glow.Range=18; glow.Brightness=0; glow.Shadows=false; glow.Parent=screen
+	end
+	local cards=display:FindFirstChild("SocialCards")
+	if not cards then
+		cards=Instance.new("Frame"); cards.Name="SocialCards"; cards.Size=UDim2.fromScale(1,1); cards.BackgroundTransparency=1; cards.Parent=display
+		for index,data in {{0.08,0.16,0.34,0.55},{0.46,0.12,0.22,0.3},{0.46,0.48,0.42,0.22}} do
+			local card=Instance.new("Frame"); card.Name="Card"..index; card.Position=UDim2.fromScale(data[1],data[2]); card.Size=UDim2.fromScale(data[3],data[4])
+			card.BackgroundColor3=({Color3.fromRGB(230,174,137),Color3.fromRGB(196,186,230),Color3.fromRGB(183,203,190)})[index]
+			card.BorderSizePixel=0; card.Parent=cards; Instance.new("UICorner",card).CornerRadius=UDim.new(0,22)
+		end
+	end
+	tvAnimationGeneration+=1; local generation=tvAnimationGeneration
+	display.Enabled=true; cards.Visible=true
+	screen.Material=if on then Enum.Material.Neon else Enum.Material.SmoothPlastic
+	local duration=if immediate then 0 else 0.55
+	local targetColor=if on then Color3.fromRGB(89,115,102) else Color3.fromRGB(22,28,27)
+	if immediate then
+		screen.Color=targetColor; glow.Brightness=if on then 1.15 else 0
+		if titleLabel then titleLabel.TextTransparency=if on then 0.25 else 1; titleLabel.BackgroundTransparency=if on then 0.15 else 1 end
+	else
+		TweenService:Create(screen,TweenInfo.new(duration),{Color=targetColor}):Play()
+		TweenService:Create(glow,TweenInfo.new(duration),{Brightness=if on then 1.15 else 0}):Play()
+		if titleLabel then TweenService:Create(titleLabel,TweenInfo.new(duration),{TextTransparency=if on then 0.25 else 1,BackgroundTransparency=if on then 0.15 else 1}):Play() end
+	end
+	tv.TVRemote.RoomControlPrompt.ActionText="Choose"
+	if on then
+		task.spawn(function()
+			local palette={Color3.fromRGB(230,174,137),Color3.fromRGB(196,186,230),Color3.fromRGB(183,203,190),Color3.fromRGB(120,196,232)}
+			local step=0
+			while tvOn and generation==tvAnimationGeneration and cards.Parent do
+				step+=1
+				for index,card in cards:GetChildren() do if card:IsA("Frame") then
+					TweenService:Create(card,TweenInfo.new(0.8,Enum.EasingStyle.Sine),{BackgroundColor3=palette[(step+index-2)%#palette+1],Rotation=math.sin(step+index)*2}):Play()
+				end end
+				task.wait(0.9)
+			end
+		end)
+	else
+		task.delay(duration,function() if generation==tvAnimationGeneration then display.Enabled=false end end)
+	end
 end
 local function apply(key,option)
 	local good=option==1
@@ -322,6 +370,7 @@ local function apply(key,option)
 	if key=="Notifications" then phone.Color=if good then ink else Color3.fromRGB(120,196,232); phoneDisplay.Text=if good then "Phone\nQuiet mode" else "Phone\n• • •" end
 	if key=="Temperature" then temperatureText.Text=if good then "67°F • Cool" else "72°F • Warm"; thermostat.Color=if good then Color3.fromRGB(160,200,220) else cream end
 	if key=="Food" then snack.Transparency=if good then 1 else 0 end
+	if key=="TV" then setTV(good==false) end
 end
 -- Live stats from every night played, stored in Tiger Data by the backend.
 local function communityLine(c)
@@ -423,6 +472,35 @@ choose = function(option)
 	busy=true
 	local generation=eveningGeneration
 	local key=current
+	if key=="TV" and option==2 then
+		actionRunning=true; stopShower(); stopReading(); dialog.Visible=false
+		for _,p in prompts do p.Enabled=false end
+		local result=request("TV",2)
+		if result and result.action then
+			local screen=expansion and expansion.TelevisionConsole:FindFirstChild("TVScreen")
+			local ok,err=pcall(TVAction.play,player,result.duration,screen)
+			if not ok then warn("TV action failed:",err) end
+			local deadline=os.clock()+6
+			repeat
+				result=request("TVFinish")
+				if not result or not result.accepted then task.wait(0.2) end
+			until (result and result.accepted) or os.clock()>=deadline
+			if result and result.accepted then
+				answers.TV=result.option; apply("TV",result.option)
+				eveningStarted=result.eveningStarted or eveningStarted
+				refresh(); updateMood(result.wellbeing,result.feedback)
+			end
+		end
+		actionRunning=false; busy=false
+		local state=request("Status")
+		if state then eveningStarted=state.eveningStarted; eveningClosed=state.phase~="room" end
+		for _,p in prompts do
+			local isTV=p.Parent and p.Parent:GetAttribute("RoomControl")=="TV"
+			p.Enabled=not eveningClosed and not (isTV and answers.TV~=nil) and not (p.ObjectText=="Shower" and answers.Shower~=nil)
+		end
+		if state and state.dream then task.spawn(runDream,state.dream) end
+		return
+	end
 	if key=="WindDown" then
 		actionRunning=true; stopShower(); dialog.Visible=false
 		for _,p in prompts do p.Enabled=false end
@@ -471,7 +549,7 @@ choose = function(option)
 		eveningStarted=if status then status.eveningStarted else nil
 		Lighting.ClockTime=22
 		Lighting.Brightness=2; Lighting.Ambient=Color3.fromRGB(110,100,120)
-		setCurtains(false); setCandle(true); setTV(false)
+		setCurtains(false); setCandle(true); setTV(true)
 		apply("Phone",2); apply("Notifications",2); apply("Temperature",2); apply("Food",2); apply("Lighting",2)
 		for _,p in prompts do p.Enabled=true end
 		refresh(); dialog.Visible=false; showObjective()
@@ -481,6 +559,7 @@ choose = function(option)
 		elseif result.dream then runDream(result.dream) end
 	elseif result.accepted then
 		answers[key]=option; apply(key,option); refresh(); updateMood(result.wellbeing,result.feedback)
+		if key=="TV" and expansion then expansion.TelevisionConsole.TVRemote.RoomControlPrompt.Enabled=false end
 		if option==1 and key=="BrushTeeth" then
 			first.Visible=false; second.Visible=false; close.Visible=false
 			local bathroom=workspace.CozyBedroom101:FindFirstChild("EnsuiteBathroom")
@@ -569,12 +648,12 @@ if bedroom then
 				object.Triggered:Connect(function()
 					if busy or completed or eveningClosed or actionRunning then return end
 					local key=object.Parent:GetAttribute("RoomControl")
-					if key=="TV" then setTV(not tvOn) elseif key=="Candle" then setCandle(not candleOn) elseif key=="Lighting" then show("Lighting") end
+					if key=="TV" then show("TV") elseif key=="Candle" then setCandle(not candleOn) elseif key=="Lighting" then show("Lighting") end
 				end)
 				table.insert(prompts,object)
 			end
 		end
-		setCurtains(false); setCandle(true); setTV(false)
+		setCurtains(false); setCandle(true); setTV(true,true)
 	end
 end
 local status=request("Status")

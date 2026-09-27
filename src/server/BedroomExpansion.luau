@@ -266,7 +266,7 @@ function Expansion.build(room)
 	part(tv,"TVFrame",Vector3.new(10,6,0.5),Vector3.new(13,6.6,0),dark)
 	local screen=part(tv,"TVScreen",Vector3.new(9.4,5.4,0.12),Vector3.new(13,6.6,0.32),Color3.fromRGB(22,28,27))
 	local surface=Instance.new("SurfaceGui"); surface.Name="TVDisplay"; surface.Face=Enum.NormalId.Back; surface.CanvasSize=Vector2.new(800,450); surface.Enabled=false; surface.Parent=screen
-	local title=Instance.new("TextLabel"); title.Size=UDim2.fromScale(1,1); title.BackgroundColor3=Color3.fromRGB(89,115,102); title.Text="COZY EVENING\n\nRain in the garden\n\nBreathe. Unwind. Stay awhile."; title.TextColor3=cream; title.TextSize=42; title.Font=Enum.Font.Gotham; title.Parent=surface
+	local title=Instance.new("TextLabel"); title.Size=UDim2.fromScale(1,1); title.BackgroundColor3=Color3.fromRGB(89,115,102); title.Text=""; title.TextColor3=cream; title.TextSize=42; title.Font=Enum.Font.Gotham; title.Parent=surface
 	local remote=part(tv,"TVRemote",Vector3.new(0.8,0.2,1.6),Vector3.new(17,2.95,8),dark); prompt(remote,"TV","Turn on")
 	-- A full-turn spiral rises 18 studs, with low risers and a continuous outer handrail.
 	local stairs=model("SpiralStaircase")

@@ -9,6 +9,7 @@ Mood.effects = {
 	Shower = {{5,3,"A comfortable shower can be part of a relaxing bedtime routine."},{0,0,"A shower is optional; choose a routine that feels comfortable."}},
 	BrushTeeth = {{3,0,"Brushing supports dental health and can be a familiar bedtime cue."},{-2,0,"Brushing later can still be part of your bedtime routine."}},
 	WindDown = {{8,12,"A quiet chapter can help you unwind before bed."},{2,-16,"Scrolling can make it harder to put your phone down and settle in."}},
+	TV = {{3,8,"Turning off the TV can help make the room quieter for sleep."},{1,-8,"Another episode can make it harder to wind down before bed."}},
 }
 function Mood.summarize(answers)
 	local mood, rest = 50, 50

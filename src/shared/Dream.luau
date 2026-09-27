@@ -104,9 +104,9 @@ function Dream.effectAnswers(answers)
 end
 
 -- Deterministic dream setup from the player's answers.
-function Dream.configure(answers)
+function Dream.configure(answers, readiness)
 	answers = Dream.effectAnswers(answers)
-	local config = {flags = {}, lines = {}, sheep = {}}
+	local config = {flags = {}, lines = {}, sheep = {}, readiness = readiness or 50}
 	for index, name in Dream.sheepNames do
 		config.sheep[index] = {name = name, platform = index + 1}
 	end
@@ -134,6 +134,17 @@ function Dream.configure(answers)
 	config.severity = 0
 	for _, key in Dream.essentials do
 		if answers[key] == 2 then config.severity += 1 end
+	end
+	-- Readiness can add difficulty without erasing consequences from specific
+	-- phone, lighting, or food choices. Watching TV alone drops readiness below
+	-- 50, so that choice reaches the existing severity-driven dream effects.
+	local readinessSeverity = if config.readiness < 35 then 2 elseif config.readiness < 50 then 1 else 0
+	config.severity = math.max(config.severity, readinessSeverity)
+	if answers.TV == 1 then
+		table.insert(config.lines, "TV off: the room grew quieter before sleep.")
+	elseif answers.TV == 2 then
+		config.flags.TVGlow = true
+		table.insert(config.lines, "One more episode: colorful scenes linger in the dream.")
 	end
 	if config.severity == 0 then
 		table.insert(config.lines, "Well rested: cloud bridges fill the gaps and your legs feel fast.")

@@ -40,11 +40,14 @@ local choices = {
 	Shower = {"Take a warm shower", "Skip showering"},
 	BrushTeeth = {"Brush my teeth", "Skip brushing"},
 	WindDown = {"Read a book", "Scroll on phone"},
+	TV = {"Turn it off", "Just one more episode"},
 }
 local bedroomStart = CFrame.lookAt(Vector3.new(-101, 15.5, -139), Vector3.new(-101, 15.5, -161))
 local checkpoints = Dream.checkpoints()
 local RUSH_SECONDS = 60
 local EVENING_SECONDS = 300
+local TV_ACTION_SECONDS = 4
+local TV_SKIP_SECONDS = 75 -- fifteen of the evening's sixty simulated minutes
 -- In Bedtime Rush, healthy habits take effort: anything left undone falls back to these.
 local rushDefaults = {Phone = 2, Lighting = 2, Food = 1}
 local grades = {
@@ -105,14 +108,22 @@ local suggestions = {
 	Lighting = "Next night, try switching to the warm lamps a little before bed.",
 	Food = "Next night, try finishing your last big meal a bit earlier in the evening.",
 	Notifications = "Next night, try turning on Do Not Disturb so late messages can wait.",
+	TV = "Next night, try switching off the TV when you are ready to settle down.",
 }
 local function scriptedReflection(answers, sheep, sheepTotal)
+	local tvOption = answers.TV
 	answers = Dream.effectAnswers(answers)
 	local lines, suggestion = {"Baaa-rb here."}, nil
 	for _, key in Dream.essentials do
 		local option = answers[key] or 1
 		table.insert(lines, reflections[key][option])
 		if option == 2 and not suggestion then suggestion = suggestions[key] end
+	end
+	if tvOption == 1 then
+		table.insert(lines, "You turned off the TV, and the room felt quieter before bed.")
+	elseif tvOption == 2 then
+		table.insert(lines, "That extra episode left some colorful motion in your dream.")
+		if not suggestion then suggestion = suggestions.TV end
 	end
 	table.insert(lines, string.format("You counted %d of %d sheep%s", sheep, sheepTotal, if sheep == sheepTotal then ". Personal best, probably." else ". The rest were busy."))
 	if not suggestion and answers.Notifications == 2 then suggestion = suggestions.Notifications end
@@ -301,6 +312,33 @@ local function finishWindDown(session)
 	session.phase = "room"
 end
 
+local function restoreTV(session)
+	local action = session.tvAction
+	if not action then return end
+	if action.root.Parent then
+		action.root.CFrame = action.home
+		action.root.Anchored = action.anchored
+		action.root.AssemblyLinearVelocity = Vector3.zero
+	end
+	if action.humanoid.Parent then
+		action.humanoid.WalkSpeed = action.speed
+		action.humanoid.JumpPower = action.jumpPower
+		action.humanoid.JumpHeight = action.jumpHeight
+		action.humanoid.AutoRotate = action.autoRotate
+	end
+	session.tvAction = nil
+end
+
+local function finishTV(session)
+	if session.phase ~= "tv" or not session.tvAction then return false end
+	session.answers.TV = 2
+	-- Moving the start backward advances the shared server clock for every client.
+	session.eveningStarted -= TV_SKIP_SECONDS
+	restoreTV(session)
+	session.phase = "room"
+	return true
+end
+
 -- Reserve the transition before any backend request yields. Both the bed and
 -- deadline use this path, so answers freeze and only one dream is configured.
 local function prepareDream(player, session)
@@ -311,7 +349,8 @@ local function prepareDream(player, session)
 		for _, key in missingEssentials(session.answers) do session.answers[key] = rushDefaults[key] end
 		session.secondsLeft = if session.rushStarted then math.clamp(math.floor(RUSH_SECONDS - (os.clock() - session.rushStarted)), 0, RUSH_SECONDS) else 0
 	end
-	session.dream = Dream.configure(session.answers)
+	local readiness = Mood.summarize(session.answers).rest
+	session.dream = Dream.configure(session.answers, readiness)
 	if session.dream.flags.Notifications then
 		session.dream.notifications = geminiNotifications(player, session.answers)
 	end
@@ -354,11 +393,27 @@ remote.OnServerInvoke = function(player, key, option)
 		end
 		return nil
 	end
+	if key == "TVFinish" then
+		if session.phase == "tv" and workspace:GetServerTimeNow() >= session.tvAction.endsAt then
+			finishTV(session)
+		end
+		expireEvening(player, session)
+		if session.answers.TV then
+			return {
+				accepted = true, option = session.answers.TV,
+				wellbeing = Mood.summarize(session.answers), feedback = Mood.feedback("TV", session.answers.TV),
+				eveningStarted = session.eveningStarted, phase = session.phase,
+				dream = if session.phase == "ready" then session.dream else nil,
+			}
+		end
+		return nil
+	end
 	if key == "Status" then
 		return {
 			wellbeing = Mood.summarize(session.answers), demo = DEMO_MODE,
 			eveningStarted = session.eveningStarted, eveningSeconds = EVENING_SECONDS,
 			windDown = session.answers.WindDown,
+			tv = session.answers.TV,
 			phase = session.phase, dream = if session.phase == "ready" then session.dream else nil,
 		}
 	end
@@ -440,6 +495,31 @@ remote.OnServerInvoke = function(player, key, option)
 		if seat and seat:IsA("BasePart") then root.CFrame = seat.CFrame * CFrame.new(0,seat.Size.Y/2+2,0) end
 		return {action = true}
 	end
+	if key == "TV" then
+		if session.phase ~= "room" or session.answers.TV or (option ~= 1 and option ~= 2) then return nil end
+		local room = workspace:FindFirstChild("CozyBedroom101")
+		local remotePart = room and room:FindFirstChild("TVRemote", true)
+		local seat = room and room:FindFirstChild("SofaSeat", true)
+		local root = rootOf(player)
+		local human = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+		if not remotePart or not root or not human or human.Health <= 0 or (root.Position-remotePart.Position).Magnitude > 14 then return nil end
+		if option == 1 then
+			session.answers.TV = 1
+			return {accepted = true, option = 1, wellbeing = Mood.summarize(session.answers), feedback = Mood.feedback("TV", 1)}
+		end
+		session.tvAction = {
+			endsAt = workspace:GetServerTimeNow() + TV_ACTION_SECONDS,
+			root = root, humanoid = human, home = root.CFrame, anchored = root.Anchored,
+			speed = human.WalkSpeed, jumpPower = human.JumpPower, jumpHeight = human.JumpHeight, autoRotate = human.AutoRotate,
+		}
+		session.phase = "tv"
+		root.Anchored = true; human.WalkSpeed = 0; human.JumpPower = 0; human.JumpHeight = 0; human.AutoRotate = false
+		if seat and seat:IsA("BasePart") then
+			local position = seat.Position + Vector3.new(0, seat.Size.Y/2 + 2, 0)
+			root.CFrame = CFrame.lookAt(position, Vector3.new(remotePart.Position.X, position.Y, remotePart.Position.Z))
+		end
+		return {action = true, duration = TV_ACTION_SECONDS}
+	end
 	-- Shower completion must come through its interaction, never the old choice dialog.
 	if key == "Shower" or key == "Phone" or key == "Reading" then return nil end
 	if session.phase ~= "room" or not choices[key] or (option ~= 1 and option ~= 2) then return nil end
@@ -456,6 +536,12 @@ task.spawn(function()
 			if session.phase == "winddown" and (not session.action.root.Parent
 				or session.action.humanoid.Health <= 0 or rootOf(player) ~= session.action.root) then
 				finishWindDown(session)
+			end
+			if session.phase == "tv" and (workspace:GetServerTimeNow() >= session.tvAction.endsAt + 4
+				or not session.tvAction.root.Parent or session.tvAction.humanoid.Health <= 0
+				or rootOf(player) ~= session.tvAction.root) then
+				finishTV(session)
+				task.spawn(expireEvening, player, session)
 			end
 			if not RUSH_MODE and session.phase == "room" and workspace:GetServerTimeNow() >= session.eveningStarted + EVENING_SECONDS then
 				task.spawn(expireEvening, player, session)
