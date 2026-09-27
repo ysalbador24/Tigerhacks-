@@ -54,13 +54,21 @@ function Decor.build()
  local bed=room:FindFirstChild("RaisedBed")
  local mattress=bed and bed:FindFirstChild("Mattress")
  if mattress then
+  -- Offsets scale with the mattress, so clutter stays on the bed wherever it moves (e.g. the loft).
   local cf=mattress.CFrame
+  local sx,sz=mattress.Size.X/24,mattress.Size.Z/12
   for i=1,3 do
-   part("LaundryOnBed",Vector3.new(1.7,.2,1.4),cf*CFrame.new(6+i*.8,mattress.Size.Y/2+.35,-3)*CFrame.Angles(0,i*.6,0),({Color3.fromRGB(155,165,132),cream,Color3.fromRGB(196,186,230)})[i],Enum.Material.Fabric)
+   part("LaundryOnBed",Vector3.new(1.7,.2,1.4),cf*CFrame.new((6+i*.8)*sx,mattress.Size.Y/2+.35,-3*sz)*CFrame.Angles(0,i*.6,0),({Color3.fromRGB(155,165,132),cream,Color3.fromRGB(196,186,230)})[i],Enum.Material.Fabric)
   end
-  local clock=part("BedsideAlarm",Vector3.new(2,1.2,.6),cf*CFrame.new(-8,2,4.4),Color3.fromRGB(230,174,137))
+  -- The alarm clock sits on the loft nightstand when there is one.
+  local expansion=room:FindFirstChild("CottageExpansion")
+  local loft=expansion and expansion:FindFirstChild("ReadingLoft")
+  local nightstand=loft and loft:FindFirstChild("BedsideTable")
+  local tabletop=nightstand and nightstand:FindFirstChild("Tabletop")
+  local clockCf=if tabletop then tabletop.CFrame*CFrame.new(-.6,tabletop.Size.Y/2+.6,0) else cf*CFrame.new(-8*sx,2,4.4*sz)
+  local clock=part("BedsideAlarm",Vector3.new(1.4,1,.5),clockCf,Color3.fromRGB(230,174,137))
   note(clock,Enum.NormalId.Back,"10:59 PM")
-  local card=part("BedsideReminder",Vector3.new(2,.04,1.3),cf*CFrame.new(-7,mattress.Size.Y/2+.4,2.8),cream)
+  local card=part("BedsideReminder",Vector3.new(2,.04,1.3),cf*CFrame.new(-7*sx,mattress.Size.Y/2+.4,2.8*sz),cream)
   note(card,Enum.NormalId.Top,"tomorrow me\nwill handle it")
  end
  local sideboard=room:FindFirstChild("Sideboard")

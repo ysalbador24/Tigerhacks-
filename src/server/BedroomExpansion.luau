@@ -53,9 +53,142 @@ function Expansion.ensureReadingWall(expansion)
 	book:SetAttribute("BedtimeActivity","Reading")
 	model.Parent=loft
 end
+-- Versioned migration for both baked rooms and newly generated rooms.
+-- Keep the old hierarchy/names: ReadingLoft also owns its downstairs library pieces.
+function Expansion.applyLayout(room, expansion)
+	if (room:GetAttribute("LayoutVersion") or 0) >= 1 then return end
+	local loft = expansion:FindFirstChild("ReadingLoft")
+	local floor = loft and loft:FindFirstChild("LoftFloor")
+	local bed = room:FindFirstChild("RaisedBed")
+	local platform = bed and bed:FindFirstChild("Platform")
+	local shelf = loft and loft:FindFirstChild("BuiltInBookshelf")
+	local desk = room:FindFirstChild("WritingDesk")
+	local desktop = desk and desk:FindFirstChild("Desktop")
+	local woodFloor = room:FindFirstChild("WoodFloor")
+	local board = woodFloor and woodFloor:FindFirstChild("Floorboard")
+	assert(floor and platform and shelf and desktop and board, "Bedroom layout needs loft, bed, bookshelf, desk and floor")
+	local groundY = board.Position.Y + board.Size.Y / 2
+	local libraryDelta = Vector3.new(0, groundY - (floor.Position.Y + floor.Size.Y / 2), -27)
+	local function translate(object, delta)
+		if object:IsA("Model") then object:PivotTo(object:GetPivot()+delta)
+		elseif object:IsA("BasePart") then object.CFrame += delta end
+	end
+	translate(shelf, libraryDelta)
+	-- Reuse the seat, table, rug and books in the space vacated by the bed.
+	for _, p in loft:GetChildren() do
+		if p:IsA("BasePart") and (p.Name == "WindowReadingSeat" or p.Name == "NookBackrest"
+			or p.Name == "ReadingTable" or p.Name == "ReadingBook" or p.Name == "ReadingRug") then
+			local extra = if p.Name == "WindowReadingSeat" or p.Name == "NookBackrest" then Vector3.new(-3,0,-2)
+				elseif p.Name == "ReadingTable" or p.Name == "ReadingBook" then Vector3.new(-3,0,-1) else Vector3.zero
+			translate(p, libraryDelta + extra)
+		end
+	end
+	-- Keep the upstairs switch upstairs even though its bookshelf moves downstairs.
+	for name, offset in {UpstairsSwitchPlate=Vector3.new(-8,3.8,7), UpstairsSwitch=Vector3.new(-8,3.8,6.8)} do
+		local p = shelf:FindFirstChild(name)
+		if p then p.CFrame = floor.CFrame * CFrame.new(offset) end
+	end
+	-- Move the loft's existing lantern and its caps into the downstairs library.
+	local extras = expansion:FindFirstChild("CozyAccessories")
+	if extras then
+		local lantern
+		for _, p in extras:GetChildren() do
+			if p.Name == "LanternGlow" and p.Position.Y > floor.Position.Y then lantern = p; break end
+		end
+		if lantern then
+			local home = lantern.Position
+			for _, p in extras:GetChildren() do
+				if p:IsA("BasePart") and (p == lantern or (p.Name == "LanternCap" and (p.Position-home).Magnitude < 2)) then
+					translate(p, libraryDelta)
+				end
+			end
+		end
+	end
+	-- Resize the complete bed arrangement together to fit inside the 19x20 loft.
+	local bottom = platform.Position.Y
+	for _, p in bed:GetChildren() do
+		if p:IsA("BasePart") then bottom = math.min(bottom, p.Position.Y-p.Size.Y/2) end
+	end
+	local from = CFrame.new(platform.Position.X, bottom, platform.Position.Z) * platform.CFrame.Rotation
+	local destination = floor.CFrame * CFrame.new(0.5, floor.Size.Y/2, 3)
+	local scale = math.min(0.6, (floor.Size.X-4)/platform.Size.X, (floor.Size.Z-10)/platform.Size.Z)
+	local function moveBedGroup(object)
+		if not object then return end
+		local pivot = from:ToObjectSpace(object:GetPivot())
+		for _, p in object:GetDescendants() do
+			if p:IsA("BasePart") then
+				local relative = from:ToObjectSpace(p.CFrame)
+				p.Size *= scale
+				p.CFrame = destination * CFrame.new(relative.Position*scale) * relative.Rotation
+			end
+		end
+		if not object.PrimaryPart then
+			object.WorldPivot = destination * CFrame.new(pivot.Position*scale) * pivot.Rotation
+		end
+	end
+	moveBedGroup(bed)
+	for i=1,3 do moveBedGroup(room:FindFirstChild("Pillow"..i)) end
+	for i=1,4 do moveBedGroup(room:FindFirstChild("UnderBedBasket"..i)) end
+	moveBedGroup(expansion:FindFirstChild("SageLayeredBedding"))
+	local function piece(parent, name, size, cf, color, material)
+		local p = parent:FindFirstChild(name)
+		if not p then p = Instance.new("Part"); p.Name=name; p.Parent=parent end
+		p.Size=size; p.CFrame=cf; p.Color=color; p.Material=material or Enum.Material.Wood
+		p.Anchored=true; p.TopSurface=Enum.SurfaceType.Smooth; p.BottomSurface=Enum.SurfaceType.Smooth
+		return p
+	end
+	local oak, cream = Color3.fromRGB(164,135,98), Color3.fromRGB(241,232,214)
+	local nightstand = loft:FindFirstChild("BedsideTable")
+	if not nightstand then nightstand=Instance.new("Model"); nightstand.Name="BedsideTable"; nightstand.Parent=loft end
+	local top = piece(nightstand,"Tabletop",Vector3.new(3,0.4,2.5),floor.CFrame*CFrame.new(5,3.3,-3),oak)
+	piece(nightstand,"Base",Vector3.new(2.5,2.8,2),floor.CFrame*CFrame.new(5,1.7,-3),cream)
+	local candle = room:FindFirstChild("WindowCandle1")
+	if candle then
+		local wax = candle:FindFirstChild("Wax")
+		if wax then translate(candle, top.Position+Vector3.new(0,top.Size.Y/2+wax.Size.Y/2,0)-wax.Position) end
+		local flame = candle:FindFirstChild("Flame")
+		if flame and not flame:FindFirstChild("BedsideLight") then
+			local light=Instance.new("PointLight"); light.Name="BedsideLight"; light.Color=Color3.fromRGB(255,217,150)
+			light.Brightness=0.7; light.Range=14; light.Parent=flame
+		end
+	end
+	-- Close the unrailed east edge, while retaining the six-stud west stair opening.
+	local rails = loft:FindFirstChild("LoftSafetyRail")
+	if not rails then rails=Instance.new("Model"); rails.Name="LoftSafetyRail"; rails.Parent=loft end
+	piece(rails,"EastTopRail",Vector3.new(0.2,0.2,20),floor.CFrame*CFrame.new(9.5,3.8,0),oak)
+	for i=0,12 do piece(rails,"EastPost"..i,Vector3.new(0.15,3.5,0.15),floor.CFrame*CFrame.new(9.5,2.05,-9.5+i*19/12),cream) end
+	local guard=piece(rails,"EastSafetyGuard",Vector3.new(0.15,3.5,20),floor.CFrame*CFrame.new(9.5,2.05,0),cream)
+	guard.Transparency=1
+	-- The final decorative spiral rails crossed the landing approach. Keep their
+	-- appearance, but let players pass through them onto the existing landing.
+	local stairs=expansion:FindFirstChild("SpiralStaircase")
+	if stairs then for _, p in stairs:GetChildren() do
+		if p:IsA("BasePart") and (p.Name=="Baluster" or p.Name=="SpiralHandrail") then
+			local q=floor.CFrame:PointToObjectSpace(p.Position)
+			if q.Y>0 and q.X < -8 and q.Z > -5 and q.Z < 1 then p.CanCollide=false end
+		end
+	end end
+	local anchors=room:FindFirstChild("LayoutAnchors")
+	if not anchors then anchors=Instance.new("Folder"); anchors.Name="LayoutAnchors"; anchors.Parent=room end
+	local function anchor(name, cf)
+		local p=piece(anchors,name,Vector3.new(0.25,0.25,0.25),cf,cream)
+		p.Transparency=1; p.CanCollide=false; p.CanTouch=false; p.CanQuery=false
+	end
+	anchor("BedSleepTarget",floor.CFrame*CFrame.new(0.5,3.3,-4.5))
+	local mattress=bed:FindFirstChild("Mattress")
+	anchor("PhoneBedAnchor",mattress.CFrame*CFrame.new(0,mattress.Size.Y/2+0.12,0))
+	anchor("PhoneDeskAnchor",desktop.CFrame*CFrame.new(0,desktop.Size.Y/2+0.12,2))
+	local tablePart=loft:FindFirstChild("ReadingTable")
+	anchor("LibraryInteractionAnchor",CFrame.new(tablePart.Position+Vector3.new(0,2,0)))
+	room:SetAttribute("LayoutVersion",1)
+end
 function Expansion.build(room)
 	local existing = room:FindFirstChild("CottageExpansion")
-	if existing then Expansion.ensureLanding(existing); Expansion.ensureReadingWall(existing); return existing end
+	if existing then
+		Expansion.ensureLanding(existing); Expansion.ensureReadingWall(existing)
+		Expansion.applyLayout(room, existing)
+		return existing
+	end
 	local root = Instance.new("Model")
 	root.Name = "CottageExpansion"
 	local origin = Vector3.new(-84, 12.4, -161)
@@ -237,6 +370,7 @@ function Expansion.build(room)
 	Expansion.ensureLanding(root)
 	Expansion.ensureReadingWall(root)
 	root.Parent=room
+	Expansion.applyLayout(room, root)
 	return root
 end
 return Expansion
