@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from google import genai
+from google.genai import types
 
 
 # -----------------------------------
@@ -19,7 +20,14 @@ load_dotenv()
 import db  # noqa: E402  (reads DATABASE_URL after .env is loaded)
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
+# Tried in order when a model is rate-limited (free tier: ~20 requests/day on
+# the big models) or overloaded. Override with a comma-separated list.
+GEMINI_FALLBACK_MODELS = [
+    m.strip() for m in os.getenv(
+        "GEMINI_FALLBACK_MODELS", "gemini-3.1-flash-lite,gemini-flash-lite-latest,gemini-3.8-flash"
+    ).split(",") if m.strip()
+]
 
 # Shared secret the Roblox server sends when saving nights (optional but recommended).
 GAME_API_KEY = os.getenv("GAME_API_KEY")
@@ -32,22 +40,36 @@ if not GEMINI_API_KEY:
 # GEMINI CLIENT
 # -----------------------------------
 
-gemini_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
+# Fail fast: the game only waits a few seconds, and ask_gemini() moves on to the
+# next model itself, so no SDK-level retries (they can stall on rate limits).
+gemini_client = genai.Client(
+    api_key=GEMINI_API_KEY,
+    http_options=types.HttpOptions(timeout=10000, retry_options=types.HttpRetryOptions(attempts=1)),
+) if GEMINI_API_KEY else None
+
+
+def _ask_model(model: str, prompt: str) -> str:
+    # generate_content fails fast on rate limits; the interactions API retries
+    # internally for tens of seconds, which is longer than the game waits.
+    text = gemini_client.models.generate_content(model=model, contents=prompt).text
+    if not text or not text.strip():
+        raise RuntimeError(f"{model} returned an empty reply")
+    return text
 
 
 def ask_gemini(prompt: str) -> str:
-    """Send a prompt to Gemini and return its text reply."""
+    """Send a prompt to Gemini, moving to the next model if one is rate-limited or down."""
     if gemini_client is None:
         raise RuntimeError("GEMINI_API_KEY is not configured")
-    try:
-        response = gemini_client.interactions.create(model=GEMINI_MODEL, input=prompt)
-        return response.output_text
-    except Exception as error:  # noqa: BLE001
-        # Older SDKs lack the interactions API, and some keys/models only work
-        # with generate_content, so fall back to the standard call.
-        print("Gemini interactions failed, trying generate_content:", error)
-        response = gemini_client.models.generate_content(model=GEMINI_MODEL, contents=prompt)
-        return response.text
+    models = list(dict.fromkeys([GEMINI_MODEL, *GEMINI_FALLBACK_MODELS]))
+    last_error = None
+    for model in models:
+        try:
+            return _ask_model(model, prompt)
+        except Exception as error:  # noqa: BLE001
+            print(f"Gemini model {model} failed:", str(error)[:200])
+            last_error = error
+    raise last_error
 
 
 # -----------------------------------
