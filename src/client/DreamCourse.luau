@@ -347,7 +347,11 @@ function DreamCourse.build(config, callbacks)
 			local position = screen.Position
 			if distance > 0.1 then position += toTarget.Unit * math.min(distance, 9 * dt) end
 			position += Vector3.new(0, math.sin(clock * 2) * 0.03, 0)
-			screen.CFrame = CFrame.lookAt(position, Vector3.new(root.Position.X, position.Y, root.Position.Z))
+			-- Direct vertical alignment has no horizontal facing direction. Avoid a
+			-- degenerate lookAt CFrame, which can send the phone outside the level.
+			local facing = Vector3.new(root.Position.X - position.X, 0, root.Position.Z - position.Z)
+			if facing.Magnitude < 0.01 then facing = Vector3.new(0, 0, 1) end
+			screen.CFrame = CFrame.lookAt(position, position + facing)
 			for _, eye in algorithm.eyes do
 				eye.eye.CFrame = screen.CFrame * CFrame.new(eye.x, 3.5, -0.9)
 				local wobble = Vector3.new(math.sin(clock * 7 + eye.x) * 0.4, math.cos(clock * 5 + eye.x) * 0.4, -0.9)

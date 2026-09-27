@@ -119,6 +119,15 @@ function Dream.configure(answers)
 		if key == "Phone" and effect.flag then config.flags.Algorithm = true end
 		table.insert(config.lines, effect.line)
 	end
+	-- Sleep debt: each unhealthy key choice makes the dream blurrier and stranger
+	-- (microsleeps, tunnel vision, shadow figures). See DreamEffects.client.luau.
+	config.severity = 0
+	for _, key in Dream.essentials do
+		if answers[key] == 2 then config.severity += 1 end
+	end
+	if config.severity >= 2 then
+		table.insert(config.lines, "Sleep debt: blurry vision, microsleeps, and something in the corner of your eye.")
+	end
 	-- Leaving notifications on adds more interruptions to the swarm.
 	if answers.Notifications == 2 then
 		config.flags.Notifications = true

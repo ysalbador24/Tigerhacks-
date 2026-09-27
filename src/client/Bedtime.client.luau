@@ -145,6 +145,8 @@ local completed=false
 local startedAt=0
 local remote -- assigned below after intro
 local runDream
+local choose
+local morningReport
 local rush -- the active Bedtime Rush round, if any
 local sleepNow, startRush
 local function request(key,option)
@@ -257,6 +259,14 @@ end
 local function showMorning(result)
 	TweenService:Create(Lighting,TweenInfo.new(3),{ClockTime=7.2,Brightness=2,Ambient=Color3.fromRGB(150,140,130)}):Play()
 	updateMood(result.wellbeing)
+	if demo then
+		dialog.Visible=false; hud.Visible=false; moodPanel.Visible=false; feedbackPanel.Visible=false
+		if morningReport then morningReport.stop() end
+		morningReport=require(script.Parent.RushResults).show(player,result,function()
+			current="Replay"; choose(1)
+		end)
+		return
+	end
 	layout(true)
 	dialog.Visible=true; hud.Visible=true; feedbackPanel.Visible=true
 	moodPanel.Visible=true
@@ -326,13 +336,14 @@ function runDream(config)
 	showMorning(result)
 	fade(false)
 end
-local function choose(option)
+choose = function(option)
 	if busy then return end
 	busy=true
 	local key=current
 	local result=request(key,option)
 	if not result then story.Text="Could not save that choice. Please try again."; busy=false; return end
 	if key=="Replay" and result.replay then
+		if morningReport then morningReport.stop(); morningReport=nil end
 		layout(false)
 		lastWellbeing=nil; updateMood(result.wellbeing,"A fresh evening begins.")
 		answers={}; completed=false; startedAt=os.clock(); Lighting.ClockTime=18.5
@@ -401,7 +412,7 @@ function sleepNow()
 end
 function startRush()
 	if rush then rush.stop() end
-	hud.Visible=false; moodPanel.Visible=false
+	hud.Visible=false; moodPanel.Visible=false; feedbackPanel.Visible=false
 	rush=BedtimeRush.start({
 		request=request,
 		apply=apply,
@@ -458,7 +469,7 @@ while gui.Parent do
 		local elapsed=os.clock()-startedAt
 		local minutes=math.min(60,math.floor(elapsed/5))
 		clock.Text=string.format("%d:%02d PM • %s",10+math.floor(minutes/60),minutes%60,if demo then "Demo: 3 key choices, then bed" elseif elapsed<300 then "Bedtime in "..math.ceil((300-elapsed)/60).." min" else "Ready for bed")
-		Lighting.ClockTime=18.5+3.5*math.min(elapsed/45,1)
+		if not demo then Lighting.ClockTime=18.5+3.5*math.min(elapsed/45,1) end
 	end
 	task.wait(1)
 end
