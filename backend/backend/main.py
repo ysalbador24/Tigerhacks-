@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from google import genai
 from google.genai import types
 
@@ -125,6 +125,19 @@ class NightRecord(BaseModel):
     seconds_left: int = Field(ge=0, le=600)
     woke_early: bool = False
     gemini_used: bool = False
+    # Every evening activity: {"Shower": 1, "BrushTeeth": 2, "Activities": 6, ...}
+    routine: dict[str, int] | None = None
+
+    @field_validator("routine")
+    @classmethod
+    def small_routine(cls, routine):
+        allowed = set(db.ROUTINE_KEYS) | {"Activities", "ShowerComfortable"}
+        if routine is not None:
+            if len(routine) > 20 or not set(routine) <= allowed:
+                raise ValueError("unknown routine keys")
+            if any(not 0 <= value <= 20 for value in routine.values()):
+                raise ValueError("routine values out of range")
+        return routine
 
 
 # -----------------------------------
@@ -308,7 +321,7 @@ def save_night(night: NightRecord, x_game_key: str | None = Header(default=None)
 @app.get("/stats")
 def stats():
     require_database()
-    return {"stats": db.community_stats(), "hourly": db.hourly()}
+    return {"stats": db.community_stats(), "hourly": db.hourly(), "routine": db.routine_stats()}
 
 
 @app.get("/leaderboard")

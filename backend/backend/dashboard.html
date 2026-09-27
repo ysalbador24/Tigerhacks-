@@ -32,6 +32,12 @@
   th { color: var(--muted); font-weight: 600; font-size: 13px; }
   .grade { font-weight: 800; }
   .empty { color: var(--muted); padding: 24px 0; text-align: center; }
+  .routine { margin-bottom: 16px; }
+  .callouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-bottom: 12px; }
+  .callout { background: #2e2952; border-radius: 12px; padding: 10px 12px; }
+  .callout .label { display: block; color: var(--muted); font-size: 13px; }
+  .callout .value { display: block; font-size: 18px; font-weight: 800; margin-top: 2px; }
+  .routineChart { position: relative; height: 340px; }
   .barb { display: flex; gap: 16px; align-items: center; margin-bottom: 16px; }
   .barb .quote { flex: 1; margin: 0; font-size: 17px; color: var(--ink); }
   .barb .credit { display: block; color: var(--muted); font-size: 13px; margin-top: 6px; }
@@ -65,6 +71,18 @@
       <span class="credit" id="barbCredit">Written by Gemini · Voice by ElevenLabs</span>
     </div>
     <button id="barbPlay" disabled>🔊 Hear Barb</button>
+  </section>
+
+  <section class="card routine">
+    <h2>🛁 The bedtime routine</h2>
+    <p>Share of nights where players did each evening activity (the healthy option). Skipping counts as not doing it.</p>
+    <div class="callouts">
+      <div class="callout"><span class="label">😴 Most skipped</span><span class="value" id="mostSkipped">–</span></div>
+      <div class="callout"><span class="label">🏆 Most popular</span><span class="value" id="mostDone">–</span></div>
+      <div class="callout"><span class="label">🚿 Water "just right"</span><span class="value" id="showerComfy">–</span></div>
+      <div class="callout"><span class="label">✅ Activities per night</span><span class="value" id="avgActivities">–</span></div>
+    </div>
+    <div class="routineChart"><canvas id="routineChart"></canvas></div>
   </section>
 
   <section class="grid">
@@ -117,6 +135,24 @@
     options: { scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, y1: { position: "right", min: 0, max: 100, grid: { drawOnChartArea: false } } } }
   });
 
+  // Evening activities, in the order the stats come back from /stats.
+  const routineLabels = {
+    WindDown: "📖 Read instead of scrolling", Lighting: "💡 Turned the main light off",
+    Food: "🍽️ Skipped the late heavy meal", Notifications: "🔕 Turned on Do Not Disturb",
+    Curtains: "🪟 Closed the curtains", Temperature: "❄️ Cooled the room",
+    Shower: "🚿 Took a shower", BrushTeeth: "🪥 Brushed teeth",
+  };
+  const routineKeys = Object.keys(routineLabels);
+  const routineChart = new Chart(document.getElementById("routineChart"), {
+    type: "bar",
+    data: { labels: routineKeys.map(k => routineLabels[k]), datasets: [{ data: routineKeys.map(() => 0), backgroundColor: "#9fd6b0", borderRadius: 6 }] },
+    options: {
+      indexAxis: "y", maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => c.parsed.x + "% of nights" } } },
+      scales: { x: { min: 0, max: 100, ticks: { callback: v => v + "%" } }, y: { ticks: { font: { size: 14 } } } }
+    }
+  });
+
   const pct = v => v == null ? "–" : Math.round(v * 100) + "%";
   const setText = (id, value) => { document.getElementById(id).textContent = value; };
 
@@ -124,7 +160,7 @@
     try {
       const [statsRes, boardRes] = await Promise.all([fetch("/stats"), fetch("/leaderboard")]);
       if (!statsRes.ok || !boardRes.ok) throw new Error("Database not configured");
-      const { stats, hourly } = await statsRes.json();
+      const { stats, hourly, routine } = await statsRes.json();
       const { leaderboard } = await boardRes.json();
 
       setText("nights", stats.nights);
@@ -144,6 +180,18 @@
       hourChart.data.datasets[0].data = hourly.map(h => h.nights);
       hourChart.data.datasets[1].data = hourly.map(h => Math.round(h.scrolled_rate * 100));
       hourChart.update();
+
+      if (routine && routine.nights > 0) {
+        const rates = routineKeys.map(k => Math.round((routine.healthy[k] ?? 0) * 100));
+        routineChart.data.datasets[0].data = rates;
+        routineChart.data.datasets[0].backgroundColor = rates.map(r => r >= 60 ? "#9fd6b0" : r >= 35 ? "#f5cf7a" : "#f29b8b");
+        routineChart.update();
+        const order = routineKeys.map((k, i) => [routineLabels[k], rates[i]]).sort((a, b) => a[1] - b[1]);
+        setText("mostSkipped", order[0][0] + " · only " + order[0][1] + "%");
+        setText("mostDone", order[order.length - 1][0] + " · " + order[order.length - 1][1] + "%");
+        setText("showerComfy", routine.shower_comfortable == null ? "–" : pct(routine.shower_comfortable) + " of showers");
+        setText("avgActivities", (routine.avg_activities ?? "–") + " of 8");
+      }
 
       const body = document.getElementById("board");
       body.replaceChildren();

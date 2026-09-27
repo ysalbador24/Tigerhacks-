@@ -6,6 +6,7 @@ from pathlib import Path
 
 import psycopg
 from psycopg.rows import dict_row
+from psycopg.types.json import Jsonb
 from psycopg_pool import ConnectionPool
 
 # Tiger Cloud's downloaded .env calls it TIMESCALE_SERVICE_URL; either name works.
@@ -36,6 +37,10 @@ def init() -> None:
             try:
                 conn.execute(statement)
             except psycopg.Error as error:
+                # Upgrades like new columns must never stop the backend from starting.
+                if "-- optional:" in statement:
+                    print("Skipping optional schema change:", error)
+                    continue
                 if not is_timescale:
                     raise
                 timescale = False
@@ -50,6 +55,8 @@ def hash_player(player_id: str) -> str:
 
 
 def save_night(night: dict) -> None:
+    if night.get("routine") is not None:
+        night["routine"] = Jsonb(night["routine"])
     columns = list(night)
     placeholders = ", ".join(f"%({c})s" for c in columns)
     with pool.connection() as conn:
@@ -90,6 +97,40 @@ def community_stats() -> dict:
         "avg_sheep": rounded(totals["avg_sheep"], 1),
         "avg_stumbles": rounded(totals["avg_stumbles"], 1),
         "grades": {row["grade"]: row["nights"] for row in grades},
+    }
+
+
+# Evening activities shown on the stats page (keys match the Roblox choices).
+ROUTINE_KEYS = ["WindDown", "Lighting", "Food", "Notifications", "Curtains", "Temperature", "Shower", "BrushTeeth"]
+
+
+def routine_stats() -> dict:
+    """Share of nights that did each activity's healthy option (only nights that sent a routine).
+    A skipped activity (missing key) counts as not done."""
+    healthy = ",\n".join(
+        f"avg(coalesce((routine->>'{key}') = '1', false)::int) AS \"{key}\"" for key in ROUTINE_KEYS
+    )
+    with pool.connection() as conn:
+        row = conn.execute(
+            f"""
+            SELECT count(*) AS nights,
+                   {healthy},
+                   avg((routine->>'Activities')::numeric) AS activities,
+                   avg(((routine->>'ShowerComfortable') = '1')::int)
+                       FILTER (WHERE routine ? 'ShowerComfortable') AS shower_comfortable
+            FROM nights
+            WHERE routine IS NOT NULL
+            """
+        ).fetchone()
+
+    def rounded(value, digits=2):
+        return None if value is None else round(float(value), digits)
+
+    return {
+        "nights": row["nights"],
+        "healthy": {key: rounded(row[key]) for key in ROUTINE_KEYS},
+        "avg_activities": rounded(row["activities"], 1),
+        "shower_comfortable": rounded(row["shower_comfortable"]),
     }
 
 

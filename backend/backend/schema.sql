@@ -21,6 +21,10 @@ CREATE TABLE IF NOT EXISTS nights (
     gemini_used   BOOLEAN     NOT NULL
 );
 
+-- optional: every evening activity the player did, e.g. {"Shower": 1, "BrushTeeth": 2, "Activities": 6}.
+-- 1 = healthy option, 2 = the other option, missing = skipped.
+ALTER TABLE nights ADD COLUMN IF NOT EXISTS routine JSONB;
+
 CREATE INDEX IF NOT EXISTS nights_points_idx ON nights (played_at DESC, points DESC);
 
 -- timescale: turn nights into a hypertable partitioned by time.

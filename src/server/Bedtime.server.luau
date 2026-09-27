@@ -219,6 +219,15 @@ local function finishNight(player, session)
 	end
 	-- Ask Gemini for Barb's report and save the night to Tiger Data at the same time.
 	local waitReflection = geminiReflection(session.answers, session.dream, session.stumbles, session.sheep, suggestion)
+	-- Every evening activity for the stats page (missing = skipped). Activities keeps it a JSON object.
+	local routine = {Activities = 0}
+	for _, key in {"WindDown", "Lighting", "Food", "Notifications", "Curtains", "Temperature", "Shower", "BrushTeeth"} do
+		if session.answers[key] then
+			routine[key] = session.answers[key]
+			routine.Activities += 1
+		end
+	end
+	if session.shower then routine.ShowerComfortable = if session.shower.comfortable then 1 else 0 end
 	local waitNight = postAsync("/nights", {
 		player_id = tostring(player.UserId),
 		display_name = string.sub(player.DisplayName, 1, 40),
@@ -235,6 +244,7 @@ local function finishNight(player, session)
 		seconds_left = session.secondsLeft or 0,
 		woke_early = session.wokeEarly == true,
 		gemini_used = BACKEND_URL ~= "",
+		routine = routine,
 	})
 	local reflectionData = waitReflection()
 	local ai = reflectionData and filtered(player, reflectionData.reflection, 500)
