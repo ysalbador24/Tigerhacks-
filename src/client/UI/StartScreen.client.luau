@@ -10,7 +10,7 @@ if previous then previous:Destroy() end
 
 local palette = {
  -- Pixel-art night: deep navy, moonlight cream, dusty blue, moon yellow.
- night = Color3.fromRGB(12,50,82), cream = Color3.fromRGB(236,228,204),
+ night = Color3.fromRGB(28,30,49), cream = Color3.fromRGB(236,228,204),
  lavender = Color3.fromRGB(158,176,212), peach = Color3.fromRGB(240,222,158),
  wood = Color3.fromRGB(146,99,64), wool = Color3.fromRGB(250,248,240),
  sheep = Color3.fromRGB(60,56,62), muted = Color3.fromRGB(150,170,190),
