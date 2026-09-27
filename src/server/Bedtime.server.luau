@@ -65,6 +65,18 @@ local function begin(player)
 	player:SetAttribute("DreamStumbles", 0)
 	player:SetAttribute("DreamSeverity", nil)
 end
+-- Reading quiz: the book reports each CDC fact the player answers correctly,
+-- saved with the night for the stats page ("% of readers learned ...").
+local readingFact = Instance.new("RemoteEvent")
+readingFact.Name = "ReadingFact"
+readingFact.Parent = ReplicatedStorage
+readingFact.OnServerEvent:Connect(function(player, chapter)
+	local session = sessions[player]
+	if not session or (session.phase ~= "room" and session.phase ~= "winddown") then return end
+	if type(chapter) ~= "number" or chapter % 1 ~= 0 or chapter < 1 or chapter > 4 then return end
+	session.readingFacts = session.readingFacts or {}
+	session.readingFacts[chapter] = true
+end)
 local function setup(player)
 	player:GetAttributeChangedSignal("StartedGame"):Connect(function()
 		if player:GetAttribute("StartedGame") and not sessions[player] then begin(player) end
@@ -239,6 +251,7 @@ local function finishNight(player, session)
 		end
 	end
 	if session.shower then routine.ShowerComfortable = if session.shower.comfortable then 1 else 0 end
+	for chapter in session.readingFacts or {} do routine["ReadingFact" .. chapter] = 1 end
 	local waitNight = postAsync("/nights", {
 		player_id = tostring(player.UserId),
 		display_name = string.sub(player.DisplayName, 1, 40),

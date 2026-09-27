@@ -131,7 +131,7 @@ class NightRecord(BaseModel):
     @field_validator("routine")
     @classmethod
     def small_routine(cls, routine):
-        allowed = set(db.ROUTINE_KEYS) | {"Activities", "ShowerComfortable"}
+        allowed = set(db.ROUTINE_KEYS) | {"Activities", "ShowerComfortable"} | set(db.READING_FACTS)
         if routine is not None:
             if len(routine) > 20 or not set(routine) <= allowed:
                 raise ValueError("unknown routine keys")

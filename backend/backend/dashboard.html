@@ -38,6 +38,13 @@
   .callout .label { display: block; color: var(--muted); font-size: 13px; }
   .callout .value { display: block; font-size: 18px; font-weight: 800; margin-top: 2px; }
   .routineChart { position: relative; height: 340px; }
+  .factsTitle { margin-top: 18px !important; }
+  .facts { display: grid; gap: 10px; }
+  .fact { display: grid; grid-template-columns: minmax(0, 1fr) 56px; gap: 4px 12px; align-items: center; }
+  .fact .name { font-size: 15px; }
+  .fact .pct { font-weight: 800; text-align: right; }
+  .fact .bar { grid-column: 1 / -1; height: 8px; border-radius: 4px; background: #3a345c; overflow: hidden; }
+  .fact .bar span { display: block; height: 100%; background: var(--blue); border-radius: 4px; }
   .barb { display: flex; gap: 16px; align-items: center; margin-bottom: 16px; }
   .barb .quote { flex: 1; margin: 0; font-size: 17px; color: var(--ink); }
   .barb .credit { display: block; color: var(--muted); font-size: 13px; margin-top: 6px; }
@@ -83,6 +90,9 @@
       <div class="callout"><span class="label">✅ Activities per night</span><span class="value" id="avgActivities">–</span></div>
     </div>
     <div class="routineChart"><canvas id="routineChart"></canvas></div>
+    <h2 class="factsTitle">📖 What readers learned</h2>
+    <p>Players who chose the book instead of the phone answer a quick question about each CDC sleep fact.</p>
+    <div id="facts" class="facts"><p class="empty">No readers yet.</p></div>
   </section>
 
   <section class="grid">
@@ -190,6 +200,25 @@
         setText("mostSkipped", order[0][0] + " · only " + order[0][1] + "%");
         setText("mostDone", order[order.length - 1][0] + " · " + order[order.length - 1][1] + "%");
         setText("showerComfy", routine.shower_comfortable == null ? "–" : pct(routine.shower_comfortable) + " of showers");
+        const facts = [
+          ["ReadingFact1", "⏰ Keep a consistent sleep schedule"],
+          ["ReadingFact2", "📵 Screens off 30 minutes before bed"],
+          ["ReadingFact3", "❄️ A cool, quiet bedroom"],
+          ["ReadingFact4", "☕ No caffeine in the evening"],
+        ];
+        const factsBox = document.getElementById("facts");
+        if (routine.readers > 0) {
+          factsBox.replaceChildren(...facts.map(([key, name]) => {
+            const value = Math.round((routine.facts_learned[key] ?? 0) * 100);
+            const row = document.createElement("div"); row.className = "fact";
+            const label = document.createElement("span"); label.className = "name"; label.textContent = name;
+            const pctLabel = document.createElement("span"); pctLabel.className = "pct"; pctLabel.textContent = value + "%";
+            const bar = document.createElement("div"); bar.className = "bar";
+            const fill = document.createElement("span"); fill.style.width = value + "%"; bar.append(fill);
+            row.append(label, pctLabel, bar);
+            return row;
+          }));
+        }
         setText("avgActivities", (routine.avg_activities ?? "–") + " of " + routineKeys.length);
       }
 

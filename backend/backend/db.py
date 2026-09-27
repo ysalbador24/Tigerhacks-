@@ -104,6 +104,10 @@ def community_stats() -> dict:
 ROUTINE_KEYS = ["WindDown", "Lighting", "Food", "Notifications", "Curtains", "Temperature", "Shower", "BrushTeeth", "TV"]
 
 
+# The four CDC facts in the in-game book (ReadingInteraction.luau), in chapter order.
+READING_FACTS = ["ReadingFact1", "ReadingFact2", "ReadingFact3", "ReadingFact4"]
+
+
 def routine_stats() -> dict:
     """Share of nights that did each activity's healthy option (only nights that sent a routine).
     A skipped activity (missing key) counts as not done."""
@@ -116,6 +120,15 @@ def routine_stats() -> dict:
             SELECT count(*) AS nights,
                    {healthy},
                    avg((routine->>'Activities')::numeric) AS activities,
+                   avg(coalesce((routine->>'ReadingFact1') = '1', false)::int)
+                       FILTER (WHERE (routine->>'WindDown') = '1') AS "ReadingFact1",
+                   avg(coalesce((routine->>'ReadingFact2') = '1', false)::int)
+                       FILTER (WHERE (routine->>'WindDown') = '1') AS "ReadingFact2",
+                   avg(coalesce((routine->>'ReadingFact3') = '1', false)::int)
+                       FILTER (WHERE (routine->>'WindDown') = '1') AS "ReadingFact3",
+                   avg(coalesce((routine->>'ReadingFact4') = '1', false)::int)
+                       FILTER (WHERE (routine->>'WindDown') = '1') AS "ReadingFact4",
+                   count(*) FILTER (WHERE (routine->>'WindDown') = '1') AS readers,
                    avg(((routine->>'ShowerComfortable') = '1')::int)
                        FILTER (WHERE routine ? 'ShowerComfortable') AS shower_comfortable
             FROM nights
@@ -131,6 +144,9 @@ def routine_stats() -> dict:
         "healthy": {key: rounded(row[key]) for key in ROUTINE_KEYS},
         "avg_activities": rounded(row["activities"], 1),
         "shower_comfortable": rounded(row["shower_comfortable"]),
+        # Among nights where the player chose to read: share who answered each fact correctly.
+        "readers": row["readers"],
+        "facts_learned": {key: rounded(row[key]) for key in READING_FACTS},
     }
 
 

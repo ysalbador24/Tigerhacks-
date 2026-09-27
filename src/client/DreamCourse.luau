@@ -457,6 +457,7 @@ function DreamCourse.build(config, callbacks)
 			if algorithm.mode == "waiting" then
 				algorithm.mode = "entrance"
 				algorithm.modeAt = clock
+				Players.LocalPlayer:SetAttribute("AlgorithmChasing", true) -- tense music (SoundScape)
 				algorithm.stage = root.Position + Vector3.new(0, 7, -24)
 				screen.Position = algorithm.stage - Vector3.new(0, 30, 0)
 				screen.Transparency = 0
@@ -531,6 +532,7 @@ function DreamCourse.build(config, callbacks)
 		if not alive then return end
 		alive = false
 		for _, connection in connections do connection:Disconnect() end
+		Players.LocalPlayer:SetAttribute("AlgorithmChasing", nil)
 		announceGui:Destroy()
 		for _, tween in tweens do tween:Cancel() end
 		for _, effect in effects do effect:Destroy() end

@@ -66,3 +66,4 @@ src/server/BackendConfig.luau
 
 # Generated ElevenLabs voice lines (uploaded to Roblox instead)
 backend/backend/barb_lines/
+backend/backend/game_sounds/

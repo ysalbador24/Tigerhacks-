@@ -1,8 +1,13 @@
 -- Uses the server's existing grade and report unchanged; presentation only.
 local TweenService=game:GetService("TweenService")
+local WakeUp=require(script.Parent:WaitForChild("WakeUp"))
 local Results={}
 function Results.show(player,result,onReplay)
  local gui=Instance.new("ScreenGui") gui.Name="RushMorningReport" gui.ResetOnSpawn=false gui.DisplayOrder=8 gui.Parent=player.PlayerGui
+ -- Alarm, sunrise, and sitting up in bed first; the report appears after.
+ local wake=WakeUp.play(player)
+ gui.Enabled=false
+ task.delay(wake,function() if gui.Parent then gui.Enabled=true end end)
  local paper=Instance.new("Frame") paper.AnchorPoint=Vector2.new(.5,.5) paper.Position=UDim2.fromScale(.5,.5) paper.Size=UDim2.fromScale(.82,.88)
  paper.BackgroundColor3=Color3.fromRGB(247,233,212) paper.BorderSizePixel=0 paper.Parent=gui
  local limit=Instance.new("UISizeConstraint") limit.MaxSize=Vector2.new(850,750) limit.Parent=paper
@@ -21,7 +26,7 @@ function Results.show(player,result,onReplay)
  grade.TextTransparency=1
  local title=text(result.gradeTitle,UDim2.fromScale(.3,.1),UDim2.fromScale(.64,.075),29,Enum.Font.FredokaOne)
  title.TextTransparency=1
- task.delay(.6,function()
+ task.delay(wake+.6,function()
   if not gui.Parent then return end
   TweenService:Create(grade,TweenInfo.new(.12),{TextTransparency=0}):Play()
   local slam=TweenService:Create(gradeScale,TweenInfo.new(.28,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Scale=1})

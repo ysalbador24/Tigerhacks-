@@ -192,6 +192,8 @@ local function openBook(player, onClose)
 		button.Activated:Connect(function()
 			if turning or destroyed then return end
 			if index == chapters[spread].correct then learned[spread] = true; render()
+				-- Stats page: which CDC facts players learned (optional, see Bedtime.server).
+				local fact = game:GetService("ReplicatedStorage"):FindFirstChild("ReadingFact"); if fact then fact:FireServer(spread) end
 			else feedback.Text = "Try again — the left page has a clue." end
 		end)
 	end
