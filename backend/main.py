@@ -2,6 +2,7 @@ import os
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Literal
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException
@@ -127,6 +128,9 @@ class NightRecord(BaseModel):
     gemini_used: bool = False
     # Every evening activity: {"Shower": 1, "BrushTeeth": 2, "Activities": 6, ...}
     routine: dict[str, int] | None = None
+    # Anonymous audience info: two-letter country/region code and device type.
+    country: str | None = Field(default=None, pattern=r"^[A-Z]{2}$")
+    device: Literal["phone", "tablet", "computer", "console"] | None = None
 
     @field_validator("routine")
     @classmethod
@@ -322,7 +326,8 @@ def save_night(night: NightRecord, x_game_key: str | None = Header(default=None)
 @app.get("/stats")
 def stats():
     require_database()
-    return {"stats": db.community_stats(), "hourly": db.hourly(), "routine": db.routine_stats()}
+    return {"stats": db.community_stats(), "hourly": db.hourly(), "routine": db.routine_stats(),
+            "audience": db.audience_stats()}
 
 
 @app.get("/leaderboard")

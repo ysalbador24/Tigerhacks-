@@ -25,6 +25,12 @@ CREATE TABLE IF NOT EXISTS nights (
 -- 1 = healthy option, 2 = the other option, missing = skipped.
 ALTER TABLE nights ADD COLUMN IF NOT EXISTS routine JSONB;
 
+-- optional: anonymous audience info. Two-letter country/region code from Roblox and device type.
+ALTER TABLE nights ADD COLUMN IF NOT EXISTS country TEXT;
+
+-- optional: phone, tablet, computer, or console.
+ALTER TABLE nights ADD COLUMN IF NOT EXISTS device TEXT;
+
 CREATE INDEX IF NOT EXISTS nights_points_idx ON nights (played_at DESC, points DESC);
 
 -- timescale: turn nights into a hypertable partitioned by time.

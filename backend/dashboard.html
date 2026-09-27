@@ -51,6 +51,9 @@
   .fact .pct { font: 400 24px/1 var(--pixel); color: var(--warn); text-align: right; }
   .fact .bar { grid-column: 1 / -1; height: 10px; background: #0b2f4d; border: 2px solid #3d6384; overflow: hidden; }
   .fact .bar span { display: block; height: 100%; background: var(--blue); }
+  .audience { margin-bottom: 16px; }
+  .split { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+  .minor { margin: 4px 0 10px; font: 400 22px/1.1 var(--pixel); }
   .barb { display: flex; gap: 16px; align-items: center; margin-bottom: 16px; }
   .barb .quote { flex: 1; margin: 0; font-size: 17px; color: var(--ink); }
   .barb .credit { display: block; color: var(--muted); font-size: 13px; margin-top: 6px; }
@@ -100,6 +103,21 @@
     <h2 class="factsTitle">📖 What readers learned</h2>
     <p>Players who chose the book instead of the phone answer a quick question about each CDC sleep fact.</p>
     <div id="facts" class="facts"><p class="empty">No readers yet.</p></div>
+  </section>
+
+  <section class="card audience">
+    <h2>Who's playing</h2>
+    <p>Anonymous: only a country/region code and device type are saved with each night. No ages, genders, or real ids.</p>
+    <div class="callouts">
+      <div class="callout"><span class="label">Monthly active players</span><span class="value" id="monthlyActive">–</span></div>
+      <div class="callout"><span class="label">Came back for another night</span><span class="value" id="returning">–</span></div>
+      <div class="callout"><span class="label">Replay effect (avg points)</span><span class="value" id="replayGain">–</span></div>
+      <div class="callout"><span class="label">Improved on a later night</span><span class="value" id="improved">–</span></div>
+    </div>
+    <div class="split">
+      <div><h3 class="minor">Countries &amp; regions</h3><div id="countries" class="facts"><p class="empty">No data yet.</p></div></div>
+      <div><h3 class="minor">Devices</h3><div id="devices" class="facts"><p class="empty">No data yet.</p></div></div>
+    </div>
   </section>
 
   <section class="grid">
@@ -177,7 +195,8 @@
     try {
       const [statsRes, boardRes] = await Promise.all([fetch("/stats"), fetch("/leaderboard")]);
       if (!statsRes.ok || !boardRes.ok) throw new Error("Database not configured");
-      const { stats, hourly, routine } = await statsRes.json();
+      const { stats, hourly, routine, audience } = await statsRes.json();
+      showAudience(audience);
       const { leaderboard } = await boardRes.json();
 
       setText("nights", stats.nights);
@@ -278,6 +297,36 @@
       setTimeout(() => { barbPlay.textContent = "🔊 Hear Barb"; barbPlay.disabled = !barbVoice; }, 2500);
     }
   });
+
+  // Who's playing: country names come from the browser, so only codes are stored.
+  const regionNames = (() => { try { return new Intl.DisplayNames(["en"], { type: "region" }); } catch (e) { return null; } })();
+  const deviceNames = { phone: "📱 Phone", tablet: "📲 Tablet", computer: "💻 Computer", console: "🎮 Console" };
+  function barRows(box, rows, label) {
+    const total = rows.reduce((sum, row) => sum + row.players, 0);
+    if (!total) return;
+    box.replaceChildren(...rows.map(row => {
+      const share = Math.round(row.players / total * 100);
+      const item = document.createElement("div"); item.className = "fact";
+      const name = document.createElement("span"); name.className = "name"; name.textContent = label(row);
+      const count = document.createElement("span"); count.className = "pct"; count.textContent = row.players;
+      const bar = document.createElement("div"); bar.className = "bar";
+      const fill = document.createElement("span"); fill.style.width = share + "%"; bar.append(fill);
+      item.append(name, count, bar);
+      return item;
+    }));
+  }
+  function showAudience(a) {
+    if (!a) return;
+    setText("monthlyActive", a.monthly_active ?? "–");
+    setText("returning", a.players ? a.returning_players + " of " + a.players : "–");
+    if (a.returning_players > 0 && a.first_night_points != null && a.later_night_points != null) {
+      const gain = Math.round(a.later_night_points - a.first_night_points);
+      setText("replayGain", Math.round(a.first_night_points) + " → " + Math.round(a.later_night_points) + " (" + (gain >= 0 ? "+" : "") + gain + ")");
+      setText("improved", pct(a.improved_rate));
+    }
+    barRows(document.getElementById("countries"), a.countries, row => (regionNames && regionNames.of(row.country)) || row.country);
+    barRows(document.getElementById("devices"), a.devices, row => deviceNames[row.device] || row.device);
+  }
 
   refresh();
   refreshBarb();

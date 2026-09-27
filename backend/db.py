@@ -150,6 +150,63 @@ def routine_stats() -> dict:
     }
 
 
+def audience_stats() -> dict:
+    """Who is playing: monthly actives, returning players, replay improvement, countries, devices."""
+    with pool.connection() as conn:
+        players = conn.execute(
+            """
+            SELECT count(DISTINCT player_hash) FILTER (WHERE played_at > now() - INTERVAL '30 days') AS monthly_active,
+                   count(DISTINCT player_hash) AS players
+            FROM nights
+            """
+        ).fetchone()
+        # Compare each returning player's first night with their later nights.
+        replay = conn.execute(
+            """
+            WITH ranked AS (
+                SELECT player_hash, points,
+                       row_number() OVER (PARTITION BY player_hash ORDER BY played_at) AS night
+                FROM nights
+            ), per_player AS (
+                SELECT max(points) FILTER (WHERE night = 1) AS first_points,
+                       avg(points) FILTER (WHERE night > 1) AS later_points
+                FROM ranked GROUP BY player_hash HAVING count(*) > 1
+            )
+            SELECT count(*) AS returning_players,
+                   avg(first_points) AS first_points,
+                   avg(later_points) AS later_points,
+                   avg((later_points > first_points)::int) AS improved_rate
+            FROM per_player
+            """
+        ).fetchone()
+        countries = conn.execute(
+            """
+            SELECT country, count(DISTINCT player_hash) AS players FROM nights
+            WHERE country IS NOT NULL GROUP BY country ORDER BY players DESC, country LIMIT 8
+            """
+        ).fetchall()
+        devices = conn.execute(
+            """
+            SELECT device, count(DISTINCT player_hash) AS players FROM nights
+            WHERE device IS NOT NULL GROUP BY device ORDER BY players DESC
+            """
+        ).fetchall()
+
+    def rounded(value, digits=1):
+        return None if value is None else round(float(value), digits)
+
+    return {
+        "monthly_active": players["monthly_active"],
+        "players": players["players"],
+        "returning_players": replay["returning_players"],
+        "first_night_points": rounded(replay["first_points"]),
+        "later_night_points": rounded(replay["later_points"]),
+        "improved_rate": rounded(replay["improved_rate"], 2),
+        "countries": [dict(row) for row in countries],
+        "devices": [dict(row) for row in devices],
+    }
+
+
 def rank_today(points: int) -> int:
     with pool.connection() as conn:
         row = conn.execute(

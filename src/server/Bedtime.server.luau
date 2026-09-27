@@ -275,6 +275,9 @@ local function finishNight(player, session)
 		woke_early = session.wokeEarly == true,
 		gemini_used = BACKEND_URL ~= "",
 		routine = routine,
+		-- Anonymous audience info (see Audience.server): country code and device type.
+		country = player:GetAttribute("Country"),
+		device = player:GetAttribute("Device"),
 	})
 	local reflectionData = waitReflection()
 	local ai = reflectionData and filtered(player, reflectionData.reflection, 500)
