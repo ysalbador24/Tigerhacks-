@@ -31,13 +31,17 @@ local function panel(pos, size)
 end
 local hud = panel(UDim2.fromScale(0.025,0.035), UDim2.fromScale(0.4,0.18))
 local clock = label(hud,"10:00 PM • Your evening",UDim2.fromScale(0.04,0.04),UDim2.fromScale(0.92,0.28))
-local progress = label(hud,"Activities completed: 0 • All optional",UDim2.fromScale(0.04,0.34),UDim2.fromScale(0.92,0.3))
+local progress = label(hud,"Activities completed: 0",UDim2.fromScale(0.04,0.34),UDim2.fromScale(0.92,0.3))
 progress.TextScaled=true
 do local c=Instance.new("UITextSizeConstraint"); c.MaxTextSize=18; c.Parent=progress end
 clock.TextScaled=true
 do local c=Instance.new("UITextSizeConstraint"); c.MaxTextSize=18; c.Parent=clock end
-local bedCue=label(hud,"Go to Bed • upstairs • anytime",UDim2.fromScale(0.04,0.65),UDim2.fromScale(0.92,0.25))
-bedCue.TextScaled=true; bedCue.TextColor3=Color3.fromRGB(212,225,183)
+local bedCue=label(hud,"Ready to dream?",UDim2.fromScale(0.14,0.65),UDim2.fromScale(0.72,0.14))
+bedCue.Font=Enum.Font.FredokaOne; bedCue.TextScaled=true; bedCue.TextColor3=Color3.fromRGB(230,174,137)
+do local c=Instance.new("UITextSizeConstraint"); c.MinTextSize=9; c.MaxTextSize=16; c.Parent=bedCue end
+local bedCueDetail=label(hud,"Your bed is waiting upstairs.",UDim2.fromScale(0.14,0.80),UDim2.fromScale(0.72,0.10))
+bedCueDetail.Font=Enum.Font.Gotham; bedCueDetail.TextScaled=true; bedCueDetail.TextColor3=cream
+do local c=Instance.new("UITextSizeConstraint"); c.MinTextSize=8; c.MaxTextSize=12; c.Parent=bedCueDetail end
 local objective=panel(UDim2.fromScale(0.2,0.31),UDim2.fromScale(0.6,0.16))
 objective.Name="EveningObjective"; objective.Visible=false
 local objectiveText=label(objective,"You have until 11 PM to get ready for bed. Try activities around the room, or go to bed early. Your choices will affect your dream.",UDim2.fromScale(0.05,0.1),UDim2.fromScale(0.9,0.8))
@@ -203,7 +207,7 @@ local function request(key,option)
 end
 local function refresh()
 	local count=0; for _ in answers do count+=1 end
-	progress.Text="Activities completed: "..count.." • All optional"
+	progress.Text="Activities completed: "..count
 end
 -- Demo mode shortens activity sequences so the whole loop fits in two minutes.
 local function pace(seconds) return if demo then math.max(3,math.floor(seconds*0.25+0.5)) else seconds end
