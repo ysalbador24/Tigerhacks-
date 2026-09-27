@@ -244,6 +244,21 @@ local function layout()
   zzz.Position=UDim2.fromScale(.51,.24)
   help.Size=UDim2.fromScale(.57,.67)
  end
+ -- On small windows the button can grow over the subtitle: tuck the subtitle
+ -- just above the button, or hide it if there is no room.
+ task.defer(function()
+  subtitle.Visible=true
+  local gap=menu.AbsolutePosition.Y-(subtitle.AbsolutePosition.Y+subtitle.AbsoluteSize.Y)
+  if gap<6 then
+   local top=menu.AbsolutePosition.Y-subtitle.AbsoluteSize.Y-8-safe.AbsolutePosition.Y
+   local titleBottom=title.AbsolutePosition.Y+title.AbsoluteSize.Y*.9-safe.AbsolutePosition.Y
+   if top>titleBottom then
+    subtitle.Position=UDim2.new(subtitle.Position.X.Scale,0,0,top)
+   else
+    subtitle.Visible=false
+   end
+  end
+ end)
 end
 connect(background:GetPropertyChangedSignal("AbsoluteSize"),layout)
 layout()
