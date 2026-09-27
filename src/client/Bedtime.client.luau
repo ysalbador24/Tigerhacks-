@@ -4,6 +4,7 @@ local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Dream = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Dream"))
 local DreamCourse = require(script.Parent:WaitForChild("DreamCourse"))
+local ShowerInteraction = require(script.Parent:WaitForChild("ShowerInteraction"))
 local BedtimeRush = require(script.Parent:WaitForChild("BedtimeRush"))
 local player = Players.LocalPlayer
 local gui = Instance.new("ScreenGui")
@@ -28,12 +29,23 @@ local function panel(pos, size)
 end
 local hud = panel(UDim2.fromScale(0.025,0.035), UDim2.fromScale(0.4,0.18))
 local clock = label(hud,"10:00 PM • Your evening",UDim2.fromScale(0.04,0.04),UDim2.fromScale(0.92,0.28))
-local progress = label(hud,"0 / 11 choices • Explore your room",UDim2.fromScale(0.04,0.34),UDim2.fromScale(0.92,0.3))
+local progress = label(hud,"Activities completed: 0 • All optional",UDim2.fromScale(0.04,0.34),UDim2.fromScale(0.92,0.3))
 progress.TextScaled=true
 do local c=Instance.new("UITextSizeConstraint"); c.MaxTextSize=18; c.Parent=progress end
 clock.TextScaled=true
 do local c=Instance.new("UITextSizeConstraint"); c.MaxTextSize=18; c.Parent=clock end
-label(hud,"Walk to an object and use its prompt.",UDim2.fromScale(0.04,0.65),UDim2.fromScale(0.92,0.25))
+local bedCue=label(hud,"Go to Bed • upstairs • anytime",UDim2.fromScale(0.04,0.65),UDim2.fromScale(0.92,0.25))
+bedCue.TextScaled=true; bedCue.TextColor3=Color3.fromRGB(212,225,183)
+local objective=panel(UDim2.fromScale(0.2,0.31),UDim2.fromScale(0.6,0.16))
+objective.Name="EveningObjective"; objective.Visible=false
+local objectiveText=label(objective,"You have until 11 PM to get ready for bed. Try activities around the room, or go to bed early. Your choices will affect your dream.",UDim2.fromScale(0.05,0.1),UDim2.fromScale(0.9,0.8))
+objectiveText.TextScaled=true
+local objectiveVersion=0
+local function showObjective()
+	objectiveVersion+=1; local version=objectiveVersion
+	objective.Visible=true
+	task.delay(10,function() if objectiveVersion==version then objective.Visible=false end end)
+end
 local moodPanel=panel(UDim2.fromScale(0.615,0.035),UDim2.fromScale(0.36,0.27))
 moodPanel.Name="MoodMeter"
 local moodText=label(moodPanel,"Mood: Okay • 50 / 100",UDim2.fromScale(0.04,0.01),UDim2.fromScale(0.92,0.2))
@@ -54,14 +66,12 @@ feedbackText.TextSize=15
 local lastWellbeing
 local function updateMood(wellbeing,feedback)
 	if not wellbeing then return end
-	local difference=if lastWellbeing then wellbeing.mood-lastWellbeing.mood else 0
-	local restDifference=if lastWellbeing then wellbeing.rest-lastWellbeing.rest else 0
 	moodText.Text="Mood: "..wellbeing.moodLabel.." • "..wellbeing.mood.." / 100"
 	restText.Text="Sleep readiness: "..wellbeing.rest.." / 100"
 	sleepText.Text=string.format("Simulated sleep: %dh %02dm",math.floor(wellbeing.sleepMinutes/60),wellbeing.sleepMinutes%60)
 	TweenService:Create(moodFill,TweenInfo.new(0.4),{Size=UDim2.fromScale(wellbeing.mood/100,1),BackgroundColor3=if wellbeing.mood>=60 then Color3.fromRGB(190,205,153) else Color3.fromRGB(222,184,136)}):Play()
 	TweenService:Create(restFill,TweenInfo.new(0.4),{Size=UDim2.fromScale(wellbeing.rest/100,1)}):Play()
-	if feedback then feedbackText.Text=feedback..string.format("  Mood %+d • Readiness %+d",difference,restDifference) end
+	if feedback then feedbackText.Text=feedback end
 	lastWellbeing=wellbeing
 end
 local dialog = panel(UDim2.fromScale(0.2,0.32),UDim2.fromScale(0.6,0.57))
@@ -122,12 +132,11 @@ local activities = {
 	{"Curtains","The world outside can wait.","Close the curtains","Leave them open",Vector3.new(-99,22.4,-185)},
 	{"Lighting","A softer glow makes this room feel like a place to rest.","Turn off the main light","Turn on the main light",Vector3.new(-95,17.4,-134.5)},
 	{"Food","Dinner is over. What feels right for the end of your evening?","Finish eating for tonight","Have a late heavy meal",Vector3.new(-62,19,-157)},
-	{"Phone","One more video could become many. Where will your phone spend the night?","Put the phone on the desk","Keep scrolling in bed",phoneDeskAnchor.Position+Vector3.new(0,1,0)},
+	{"Phone","Where would you like your phone tonight? Putting it away uses the desk downstairs.","Put away for the night","Keep by the bed",phoneBedAnchor.Position},
 	{"Notifications","The group chat is still buzzing. You can catch up tomorrow.","Turn on Do Not Disturb","Keep notifications on",phoneDeskAnchor.Position+Vector3.new(2,1,0)},
 	{"Temperature","Settle into a room that feels comfortably cool to you.","Make the room comfortably cool","Keep the room warm",Vector3.new(-109,21,-149)},
 	{"Shower","Warm water, a soft towel, and a quiet moment to reset.","Take a warm shower","Skip showering",Vector3.new(-128,17,-145)},
 	{"BrushTeeth","Set your toothbrush ready and take a moment for your evening routine.","Brush my teeth","Skip brushing",Vector3.new(-120.5,18,-147.5)},
-	{"Skincare","Cleanse, moisturize, and settle into your evening.","Do my skincare routine","Skip skincare",Vector3.new(-114.5,18,-147.5)},
 	{"Reading","A quiet chapter in your cozy downstairs library.","Read a quiet chapter","Skip reading",libraryAnchor.Position},
 	{"WindDown","Let your shoulders relax. Breathe gently at your own pace for a quiet minute.","Take a quiet breathing break","Skip winding down",Vector3.new(-71,17,-149)},
 }
@@ -139,8 +148,14 @@ local curtains={}
 local expansion
 local candleOn=true
 local tvOn=false
-local phone=part("BedtimePhone",Vector3.new(1,0.15,1.8),phoneDeskAnchor.Position,ink)
-phone.CFrame=phoneDeskAnchor.CFrame
+local phone=part("BedtimePhone",Vector3.new(1.2,0.18,2),phoneBedAnchor.Position,ink)
+phone.CFrame=phoneBedAnchor.CFrame
+local phoneScreen=Instance.new("SurfaceGui"); phoneScreen.Name="PhoneScreen"; phoneScreen.Face=Enum.NormalId.Top
+phoneScreen.CanvasSize=Vector2.new(180,300); phoneScreen.Parent=phone
+local phoneDisplay=Instance.new("TextLabel"); phoneDisplay.Size=UDim2.fromScale(0.86,0.88); phoneDisplay.Position=UDim2.fromScale(0.07,0.06)
+phoneDisplay.BackgroundColor3=Color3.fromRGB(71,88,108); phoneDisplay.Text="Phone\n• • •"; phoneDisplay.TextColor3=cream
+phoneDisplay.Font=Enum.Font.Gotham; phoneDisplay.TextScaled=true; phoneDisplay.Parent=phoneScreen
+Instance.new("UICorner",phoneDisplay).CornerRadius=UDim.new(0,16)
 local plate=part("EveningPlate",Vector3.new(2.5,0.15,2.5),Vector3.new(-62,17.8,-157),cream)
 local snack=part("LateSnack",Vector3.new(1.6,0.5,1.6),Vector3.new(-62,18.1,-157),Color3.fromRGB(190,126,72))
 local thermostat=part("Thermostat",Vector3.new(0.3,2,2.5),Vector3.new(-109.5,19,-149),cream)
@@ -151,12 +166,24 @@ local answers={}
 local current=nil
 local busy=false
 local completed=false
-local startedAt=0
+local eveningStarted=nil
+local eveningSeconds=300
+local eveningClosed=false
+local eveningGeneration=0
+local function eveningTime()
+	local elapsed=if eveningStarted then workspace:GetServerTimeNow()-eveningStarted else 0
+	local minutes=math.floor(math.clamp(elapsed/eveningSeconds,0,1)*60)
+	return string.format("%d:%02d PM",10+math.floor(minutes/60),minutes%60), elapsed
+end
 local remote -- assigned below after intro
 local runDream
 local choose
 local morningReport
 local rush -- the active Bedtime Rush round, if any
+local shower
+local function stopShower()
+	if shower then shower.stop(true); shower=nil end
+end
 local sleepNow, startRush
 local function request(key,option)
 	local done,result=false,nil
@@ -170,22 +197,38 @@ local function request(key,option)
 	return result
 end
 local function refresh()
-	if demo then
-		local parts, done={},0
-		for _,key in Dream.essentials do
-			if answers[key] then done+=1 end
-			table.insert(parts,key..(if answers[key] then " ✓" else " ·"))
-		end
-		progress.Text="Key choices "..done.." / "..#Dream.essentials.." • "..table.concat(parts,"  ")..(if done==#Dream.essentials then "\nBed is ready! (extras optional)" else "")
-		return
-	end
 	local count=0; for _ in answers do count+=1 end
-	progress.Text=count.." / "..#activities.." choices • "..(if count==#activities then "Your bed is ready" else "Explore your room")
+	progress.Text="Activities completed: "..count.." • All optional"
 end
 -- Demo mode shortens activity sequences so the whole loop fits in two minutes.
 local function pace(seconds) return if demo then math.max(3,math.floor(seconds*0.25+0.5)) else seconds end
 local function show(key)
-	if busy or completed then return end
+	if busy or completed or eveningClosed then return end
+	objective.Visible=false
+	stopShower()
+	if key=="Shower" then
+		if answers.Shower then return end
+		busy=true
+		local result=request("ShowerStart")
+		busy=false
+		if completed or eveningClosed then return end
+		if not result or not result.started then
+			feedbackText.Text=if result and result.message then result.message else "Could not start the shower. Try again inside the shower tray."
+			return
+		end
+		dialog.Visible=false
+		local bathroom=bedroom:FindFirstChild("EnsuiteBathroom")
+		if not bathroom then return end
+		shower=ShowerInteraction.start(player,bathroom,function(temperature)
+			local response=request("ShowerFinish",{temperature=temperature,wiped=true})
+			if completed or eveningClosed then return false end
+			if not response or not response.accepted then return false end
+			answers.Shower=1; refresh(); updateMood(response.wellbeing,response.feedback)
+			for _,p in prompts do if p.ObjectText=="Shower" then p.Enabled=false end end
+			return true
+		end)
+		return
+	end
 	-- Bedtime Rush plays the key habits as objectives, not dialogs.
 	if rushMode and isEssential(key) then return end
 	-- In Bedtime Rush the bed ends the round immediately.
@@ -193,19 +236,36 @@ local function show(key)
 		if rush then rush.goToBed() else sleepNow() end
 		return
 	end
-	current=key; dialog.Visible=true; first.Visible=true; second.Visible=key~="Sleep"; close.Visible=true
+	current=key; dialog.Visible=true; first.Visible=true; second.Visible=true; close.Visible=key~="Sleep"
 	if key=="Sleep" then
-		title.Text="Call it a night"; story.Text="Your choices are yours. Ready to see how this evening adds up?"; first.Text="Go to sleep"
+		title.Text="Go to sleep at "..eveningTime().."?"; story.Text="Confirm to begin your dream, or return to your evening."; first.Text="Confirm"; second.Text="Cancel"
 	else
 		for _,a in activities do if a[1]==key then title.Text=key; story.Text=a[2]; first.Text=a[3]; second.Text=a[4] end end
 	end
 end
-local function prompt(key,pos)
-	local anchor=part(key.."Interaction",Vector3.new(1,1,1),pos,cream); anchor.Transparency=1
-	local p=Instance.new("ProximityPrompt"); p.ActionText="Choose"; p.ObjectText=key; p.MaxActivationDistance=10; p.RequiresLineOfSight=false; p.Enabled=false; p.Parent=anchor
+local function prompt(key,pos,object)
+	local anchor=object or part(key.."Interaction",Vector3.new(1,1,1),pos,cream)
+	if not object then anchor.Transparency=1 end
+	local p=Instance.new("ProximityPrompt"); p.Name="BedtimePrompt"
+	p.ActionText=if key=="Sleep" then "Go to Bed" elseif key=="Shower" then "Start Shower" else "Interact"
+	p.ObjectText=if key=="Sleep" then "Upstairs bed" else key
+	p.MaxActivationDistance=8; p.RequiresLineOfSight=false; p.HoldDuration=0; p.Enabled=false; p.Parent=anchor
+	local marker=Instance.new("BillboardGui"); marker.Name="ActivityMarker"; marker.Size=UDim2.fromOffset(140,30)
+	marker.StudsOffset=Vector3.new(0,2,0); marker.MaxDistance=18; marker.AlwaysOnTop=false; marker.Enabled=false; marker.Parent=anchor
+	local markerText=label(marker,"• "..p.ObjectText,UDim2.fromScale(0,0),UDim2.fromScale(1,1))
+	markerText.TextSize=14; markerText.TextStrokeTransparency=0.5; markerText.TextColor3=Color3.fromRGB(244,218,168)
+	p:GetPropertyChangedSignal("Enabled"):Connect(function() marker.Enabled=p.Enabled end)
 	p.Triggered:Connect(function() show(key) end); table.insert(prompts,p)
 end
-for _,a in activities do prompt(a[1],a[5]) end
+for _,a in activities do
+	if a[1]=="Phone" then
+		-- Reuse the existing physical phone: one choice prompt, following its location.
+		prompt(a[1],a[5],phone)
+	elseif a[1]=="Notifications" then
+		local attachment=Instance.new("Attachment"); attachment.Name="NotificationInteraction"; attachment.Position=Vector3.new(2,0,0); attachment.Parent=phone
+		prompt(a[1],a[5],attachment)
+	else prompt(a[1],a[5]) end
+end
 prompt("Sleep",bedSleepTarget.Position)
 local roomLights={}
 local function setCurtains(closed)
@@ -252,7 +312,7 @@ local function apply(key,option)
 		end
 	end
 	if key=="Phone" then phone.CFrame=if good then phoneDeskAnchor.CFrame else phoneBedAnchor.CFrame end
-	if key=="Notifications" then phone.Color=if good then ink else Color3.fromRGB(120,196,232) end
+	if key=="Notifications" then phone.Color=if good then ink else Color3.fromRGB(120,196,232); phoneDisplay.Text=if good then "Phone\nQuiet mode" else "Phone\n• • •" end
 	if key=="Temperature" then temperatureText.Text=if good then "67°F • Cool" else "72°F • Warm"; thermostat.Color=if good then Color3.fromRGB(160,200,220) else cream end
 	if key=="Food" then snack.Transparency=if good then 1 else 0 end
 end
@@ -300,6 +360,10 @@ local function fade(visible,text)
 	tween:Play(); tween.Completed:Wait()
 end
 function runDream(config)
+	if completed then return end
+	objective.Visible=false
+	stopShower()
+	eveningClosed=true
 	completed=true; for _,p in prompts do p.Enabled=false end
 	dialog.Visible=false; hud.Visible=false; feedbackPanel.Visible=false
 	fade(true,"Falling asleep...")
@@ -346,38 +410,43 @@ function runDream(config)
 	fade(false)
 end
 choose = function(option)
-	if busy then return end
+	if busy or (eveningClosed and current~="Replay") then return end
+	if current=="Sleep" and option==2 then dialog.Visible=false; current=nil; return end
 	busy=true
+	local generation=eveningGeneration
 	local key=current
 	local result=request(key,option)
+	if completed and key~="Replay" then busy=false; return end
 	if not result then story.Text="Could not save that choice. Please try again."; busy=false; return end
 	if key=="Replay" and result.replay then
+		stopShower()
 		if morningReport then morningReport.stop(); morningReport=nil end
 		layout(false)
 		lastWellbeing=nil; updateMood(result.wellbeing,"A fresh evening begins.")
-		answers={}; completed=false; startedAt=os.clock(); Lighting.ClockTime=18.5
+		answers={}; completed=false; eveningClosed=false; eveningGeneration+=1
+		local status=request("Status")
+		eveningStarted=if status then status.eveningStarted else nil
+		Lighting.ClockTime=22
 		Lighting.Brightness=2; Lighting.Ambient=Color3.fromRGB(110,100,120)
 		setCurtains(false); setCandle(true); setTV(false)
-		apply("Phone",1); apply("Notifications",2); apply("Temperature",2); apply("Food",2); apply("Lighting",2)
+		apply("Phone",2); apply("Notifications",2); apply("Temperature",2); apply("Food",2); apply("Lighting",2)
 		for _,p in prompts do p.Enabled=true end
-		refresh(); dialog.Visible=false
+		refresh(); dialog.Visible=false; showObjective()
 		if rushMode then startRush() else hud.Visible=true; moodPanel.Visible=true; feedbackPanel.Visible=true end
 	elseif key=="Sleep" then
 		if result.message then story.Text=result.message
 		elseif result.dream then runDream(result.dream) end
 	elseif result.accepted then
 		answers[key]=option; apply(key,option); refresh(); updateMood(result.wellbeing,result.feedback)
-		if option==1 and (key=="Shower" or key=="BrushTeeth" or key=="Skincare") then
+		if option==1 and key=="BrushTeeth" then
 			first.Visible=false; second.Visible=false; close.Visible=false
 			local bathroom=workspace.CozyBedroom101:FindFirstChild("EnsuiteBathroom")
-			local duration=pace(if key=="Shower" then 15 elseif key=="BrushTeeth" then 20 else 12)
+			local duration=pace(20)
 			local brush=if bathroom then bathroom:FindFirstChild("Toothbrush") else nil
 			local brushHome=if brush then brush.CFrame else nil
-			if bathroom and key=="Shower" then
-				for _,p in bathroom:GetChildren() do if p.Name=="ShowerWater" then p.Transparency=0.45 end end
-			end
 			for remaining=duration,1,-1 do
-				story.Text=(if key=="Shower" then "The shower is running. Enjoy a quiet moment." elseif key=="BrushTeeth" then "Freshening up for the night." else "A little care at the end of the day.").."\n\n"..remaining.." seconds • game activity"
+				if completed or eveningClosed or generation~=eveningGeneration then break end
+				story.Text="Freshening up for the night.".."\n\n"..remaining.." seconds • game activity"
 				if key=="BrushTeeth" and brush and player.Character and player.Character:FindFirstChild("Head") then
 					brush.CanCollide=false
 					brush.CFrame=player.Character.Head.CFrame*CFrame.new(0.35*(if remaining%2==0 then 1 else -1),-0.25,-0.8)*CFrame.Angles(0,0,math.pi/2)
@@ -385,15 +454,14 @@ choose = function(option)
 				task.wait(1)
 			end
 			if brush and brushHome then brush.CFrame=brushHome end
-			if bathroom then for _,p in bathroom:GetChildren() do if p.Name=="ShowerWater" then p.Transparency=1 end end end
 		end
 		if key=="Reading" and option==1 then
 			first.Visible=false; second.Visible=false; close.Visible=false
-			for remaining=pace(15),1,-1 do story.Text="The garden grew quiet as the sun slipped away. Tomorrow could wait another chapter.\n\nReading • "..remaining.." seconds"; task.wait(1) end
+			for remaining=pace(15),1,-1 do if completed or eveningClosed or generation~=eveningGeneration then break end; story.Text="The garden grew quiet as the sun slipped away. Tomorrow could wait another chapter.\n\nReading • "..remaining.." seconds"; task.wait(1) end
 		end
 		if key=="WindDown" and option==1 then
 			first.Visible=false; second.Visible=false; close.Visible=false
-			for remaining=pace(60),1,-1 do story.Text="Rest your shoulders. Breathe gently.\nNothing to rush.\n"..remaining.." seconds"; task.wait(1) end
+			for remaining=pace(60),1,-1 do if completed or eveningClosed or generation~=eveningGeneration then break end; story.Text="Rest your shoulders. Breathe gently.\nNothing to rush.\n"..remaining.." seconds"; task.wait(1) end
 		end
 		dialog.Visible=false
 	end
@@ -413,8 +481,6 @@ if rushMode then
 	local kept={}
 	for _,p in prompts do if isEssential(p.ObjectText) then p.Parent=nil else table.insert(kept,p) end end
 	prompts=kept
-elseif demo then
-	for _,p in prompts do if isEssential(p.ObjectText) then p.ObjectText=p.ObjectText.." • key choice" end end
 end
 function sleepNow()
 	if busy or completed then return end
@@ -451,7 +517,7 @@ if bedroom then
 		for _,object in expansion:GetDescendants() do
 			if object:IsA("ProximityPrompt") then
 				object.Triggered:Connect(function()
-					if busy or completed then return end
+					if busy or completed or eveningClosed then return end
 					local key=object.Parent:GetAttribute("RoomControl")
 					if key=="TV" then setTV(not tvOn) elseif key=="Candle" then setCandle(not candleOn) elseif key=="Lighting" then show("Lighting") end
 				end)
@@ -462,18 +528,36 @@ if bedroom then
 	end
 end
 local status=request("Status")
-if status then updateMood(status.wellbeing) end
+if status then updateMood(status.wellbeing); eveningStarted=status.eveningStarted; eveningSeconds=status.eveningSeconds end
 refresh()
-gui.Enabled=true; startedAt=os.clock(); Lighting.ClockTime=18.5
+gui.Enabled=true; Lighting.ClockTime=22
+showObjective()
 Lighting.Ambient=Color3.fromRGB(110,100,120)
 for _,p in prompts do p.Enabled=true end
 if rushMode then startRush() end
+-- Polling also recovers a ready dream if a sleep reply was lost. runDream's
+-- guard prevents a simultaneous Confirm reply from building a second course.
 while gui.Parent do
-	if not completed then
-		local elapsed=os.clock()-startedAt
-		local minutes=math.min(60,math.floor(elapsed/5))
-		clock.Text=string.format("%d:%02d PM • %s",10+math.floor(minutes/60),minutes%60,if demo then "Demo: 3 key choices, then bed" elseif elapsed<300 then "Bedtime in "..math.ceil((300-elapsed)/60).." min" else "Ready for bed")
-		if not rushMode then Lighting.ClockTime=18.5+3.5*math.min(elapsed/45,1) end
+	if not completed and not rushMode then
+		local state=request("Status")
+		if state then
+			eveningStarted=state.eveningStarted
+			eveningSeconds=state.eveningSeconds
+			eveningClosed=state.phase~="room"
+			if eveningClosed then
+				objective.Visible=false
+				stopShower()
+				for _,p in prompts do p.Enabled=false end
+				dialog.Visible=false
+			end
+			if state.dream and not completed then task.spawn(runDream,state.dream) end
+		end
+		if not completed then
+			local timeText,elapsed=eveningTime()
+			clock.Text=timeText.." • Your evening"
+			Lighting.ClockTime=22+math.clamp(elapsed/eveningSeconds,0,1)
+			if current=="Sleep" and dialog.Visible then title.Text="Go to sleep at "..timeText.."?" end
+		end
 	end
-	task.wait(1)
+	task.wait(0.25)
 end

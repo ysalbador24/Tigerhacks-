@@ -6,12 +6,11 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Mood = require(Shared:WaitForChild("EveningMood"))
 local Dream = require(Shared:WaitForChild("Dream"))
 
--- Demo mode runs Bedtime Rush: a 60-second arcade round where the three key
--- habits are played, not clicked. Set false for the full routine (all
--- activities and five minutes of evening before bed).
+-- Demo mode keeps the existing short activity sequences and morning report.
+-- RUSH_MODE separately enables the legacy arcade round.
 local DEMO_MODE = true
 -- Bedtime Rush (60-second arcade evening). Off = the original room: walk to
--- objects and choose; the three key choices unlock bed.
+-- objects and choose during a five-minute evening; bed is always available.
 local RUSH_MODE = false
 -- Backend connection lives in src/server/BackendConfig.luau, which git ignores
 -- (copy BackendConfig.example.luau). Without it, the game uses scripted text only.
@@ -36,20 +35,18 @@ local choices = {
 	Curtains = {"Close the curtains", "Leave them open"},
 	Lighting = {"Use warm, dim lighting", "Keep the bright light"},
 	Food = {"Finish eating for tonight", "Have a late heavy meal"},
-	Phone = {"Put the phone on the desk", "Keep scrolling in bed"},
+	Phone = {"Put away for the night", "Keep by the bed"},
 	Notifications = {"Turn on Do Not Disturb", "Keep notifications on"},
 	Temperature = {"Make the room comfortably cool", "Keep the room warm"},
 	Shower = {"Take a warm shower", "Skip showering"},
 	BrushTeeth = {"Brush my teeth", "Skip brushing"},
-	Skincare = {"Do my skincare routine", "Skip skincare"},
 	Reading = {"Read a quiet chapter", "Skip reading"},
 	WindDown = {"Take a quiet breathing break", "Skip winding down"},
 }
-local totalChoices = 0
-for _ in choices do totalChoices += 1 end
 local bedroomStart = CFrame.lookAt(Vector3.new(-101, 15.5, -139), Vector3.new(-101, 15.5, -161))
 local checkpoints = Dream.checkpoints()
 local RUSH_SECONDS = 60
+local EVENING_SECONDS = 300
 -- In Bedtime Rush, healthy habits take effort: anything left undone falls back to these.
 local rushDefaults = {Phone = 2, Lighting = 2, Food = 1}
 local grades = {
@@ -60,10 +57,10 @@ local grades = {
 	{0, "D", "Raccoon Energy"},
 }
 
--- phase: "room" -> "ready" (sleep accepted) -> "dream" -> "morning"
+-- phase: "room" -> "preparing" -> "ready" -> "dream" -> "morning"
 local sessions = {}
 local function begin(player)
-	sessions[player] = {answers = {}, started = os.clock(), phase = "room"}
+	sessions[player] = {answers = {}, started = os.clock(), eveningStarted = workspace:GetServerTimeNow(), phase = "room"}
 	player:SetAttribute("DreamStumbles", 0)
 	player:SetAttribute("DreamSeverity", nil)
 end
@@ -264,11 +261,36 @@ local function finishNight(player, session)
 		suggestion = suggestion,
 		community = community,
 		answers = session.answers,
+		shower = session.shower,
 		wellbeing = wellbeing,
 	}
 	local character = player.Character
 	if character then character:PivotTo(bedroomStart) end
 	return session.result
+end
+
+-- Reserve the transition before any backend request yields. Both the bed and
+-- deadline use this path, so answers freeze and only one dream is configured.
+local function prepareDream(player, session)
+	if session.phase ~= "room" then return end
+	session.phase = "preparing"
+	session.bedtime = 22 + math.clamp((workspace:GetServerTimeNow() - session.eveningStarted) / EVENING_SECONDS, 0, 1)
+	if DEMO_MODE and RUSH_MODE then
+		for _, key in missingEssentials(session.answers) do session.answers[key] = rushDefaults[key] end
+		session.secondsLeft = if session.rushStarted then math.clamp(math.floor(RUSH_SECONDS - (os.clock() - session.rushStarted)), 0, RUSH_SECONDS) else 0
+	end
+	session.dream = Dream.configure(session.answers)
+	if session.dream.flags.Notifications then
+		session.dream.notifications = geminiNotifications(player, session.answers)
+	end
+	session.phase = "ready"
+end
+
+local function expireEvening(player, session)
+	if not RUSH_MODE and session.phase == "room"
+		and workspace:GetServerTimeNow() >= session.eveningStarted + EVENING_SECONDS then
+		prepareDream(player, session)
+	end
 end
 
 remote.OnServerInvoke = function(player, key, option)
@@ -291,28 +313,18 @@ remote.OnServerInvoke = function(player, key, option)
 		if session.phase == "room" and not session.rushStarted then session.rushStarted = os.clock() end
 		return {started = true}
 	end
-	if key == "Status" then return {wellbeing = Mood.summarize(session.answers), demo = DEMO_MODE} end
+	expireEvening(player, session)
+	if key == "Status" then
+		return {
+			wellbeing = Mood.summarize(session.answers), demo = DEMO_MODE,
+			eveningStarted = session.eveningStarted, eveningSeconds = EVENING_SECONDS,
+			phase = session.phase, dream = if session.phase == "ready" then session.dream else nil,
+		}
+	end
 	if key == "Sleep" then
 		if session.phase == "ready" then return {dream = session.dream} end -- retry after a failed EnterDream
 		if session.phase ~= "room" then return nil end
-		local count = 0
-		for _ in session.answers do count += 1 end
-		if DEMO_MODE and not RUSH_MODE then
-			local missing = missingEssentials(session.answers)
-			if #missing > 0 then return {message = "Before bed, make tonight's key choices: " .. table.concat(missing, ", ") .. "."} end
-		elseif DEMO_MODE then
-			for _, key in missingEssentials(session.answers) do session.answers[key] = rushDefaults[key] end
-			session.secondsLeft = if session.rushStarted then math.clamp(math.floor(RUSH_SECONDS - (os.clock() - session.rushStarted)), 0, RUSH_SECONDS) else 0
-		else
-			if count < totalChoices then return {message = "Try all " .. totalChoices .. " room and bathroom activities before going to sleep."} end
-			local remaining = math.ceil(300 - (os.clock() - session.started))
-			if remaining > 0 then return {message = "Enjoy a little quiet time. Bedtime is in " .. remaining .. " seconds. You can revisit your choices."} end
-		end
-		session.phase = "ready"
-		session.dream = Dream.configure(session.answers)
-		if session.dream.flags.Notifications then
-			session.dream.notifications = geminiNotifications(player, session.answers)
-		end
+		prepareDream(player, session)
 		return {dream = session.dream}
 	end
 	-- The client builds its local course first, then asks to be moved into it.
@@ -346,17 +358,45 @@ remote.OnServerInvoke = function(player, key, option)
 		session.sheep = math.clamp(sheep, 0, session.dream.sheepCountable)
 		return finishNight(player, session)
 	end
+	if key == "ShowerStart" or key == "ShowerFinish" then
+		if session.phase ~= "room" or session.answers.Shower then return nil end
+		local room = workspace:FindFirstChild("CozyBedroom101")
+		local bathroom = room and room:FindFirstChild("EnsuiteBathroom")
+		local tray = bathroom and bathroom:FindFirstChild("ShowerTray")
+		local root = rootOf(player)
+		if not tray or not root then return nil end
+		local offset = tray.CFrame:PointToObjectSpace(root.Position)
+		if key == "ShowerStart" then
+			if math.abs(offset.X) > tray.Size.X/2 or math.abs(offset.Z) > tray.Size.Z/2 or math.abs(offset.Y) > 8 then
+				return {message = "Step inside the shower tray to turn on the water."}
+			end
+			session.showerStarted = true
+			return {started = true}
+		end
+		if not session.showerStarted or (root.Position-tray.Position).Magnitude > 16 then return nil end
+		local temperature = type(option) == "table" and option.temperature
+		if type(temperature) ~= "number" or temperature ~= temperature or temperature < 0 or temperature > 1 or option.wiped ~= true then return nil end
+		session.shower = {temperature = temperature, comfortable = temperature >= 0.4 and temperature <= 0.65}
+		session.answers.Shower = 1
+		session.showerStarted = nil
+		return {accepted = true, wellbeing = Mood.summarize(session.answers), shower = session.shower,
+			feedback = Mood.feedback("Shower", 1) .. (if session.shower.comfortable then " The water felt comfortable." else " The water was outside the comfortable range.")}
+	end
+	-- Shower completion must come through its interaction, never the old choice dialog.
+	if key == "Shower" then return nil end
 	if session.phase ~= "room" or not choices[key] or (option ~= 1 and option ~= 2) then return nil end
 	session.answers[key] = option
 	local feedback = Mood.feedback(key, option)
-	local hint = Dream.hint(key, option)
-	return {accepted = true, wellbeing = Mood.summarize(session.answers), feedback = if hint then feedback .. " " .. hint else feedback}
+	return {accepted = true, wellbeing = Mood.summarize(session.answers), feedback = feedback}
 end
 
 -- Server-owned dream progress: advance checkpoints and catch falls.
 task.spawn(function()
 	while true do
 		for player, session in sessions do
+			if not RUSH_MODE and session.phase == "room" and workspace:GetServerTimeNow() >= session.eveningStarted + EVENING_SECONDS then
+				task.spawn(expireEvening, player, session)
+			end
 			if session.phase == "dream" then
 				local root = rootOf(player)
 				if root then
