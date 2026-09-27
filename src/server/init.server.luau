@@ -267,6 +267,7 @@ for _, side in ipairs({ -1, 1 }) do
 		local fixture = piece("RoomLight", Vector3.new(5, 0.5, 5), Vector3.new(x, 28, z), colors.trim, Enum.Material.Neon)
 		local light = Instance.new("PointLight")
 		light.Brightness = 1.5
+		light.Enabled = false
 		light.Range = 65
 		light.Parent = fixture
 	end

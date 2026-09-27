@@ -143,10 +143,11 @@ function Rush.start(ctx)
 		return p
 	end
 
-	-- The unhealthy defaults: phone out, big light on.
+	-- Start with the phone out and the main light off.
 	ctx.apply("Phone", 2)
-	ctx.apply("Lighting", 2)
-	presentation.lightState(2)
+	ctx.apply("Lighting", 1)
+	presentation.lightState(1)
+	mark("Lighting", "done")
 	ctx.apply("Food", 1)
 
 	-- Runaway phone ---------------------------------------------------
@@ -198,6 +199,7 @@ function Rush.start(ctx)
 	glow.Color = bulb.Color
 	glow.Parent = bulb
 	bubble(bulb, "BIG LIGHT: smack me", Color3.fromRGB(200, 150, 30))
+	bulb.Parent = nil
 	local roommateAt = nil
 	local roommateDone = false
 
@@ -210,7 +212,7 @@ function Rush.start(ctx)
 	local fridgeOpens = 0
 	local lastPhase = 0
 	local lastCountdown = 6
-	local lightOff = false
+	local lightOff = true
 	local pendingSaves = 0
 	local saveQueue = {}
 	local saving = false
@@ -436,7 +438,7 @@ function Rush.start(ctx)
 		if not alive then return end
 		pop("BEDTIME RUSH!", Color3.fromRGB(255, 210, 120), 1.2, "catch your phone • smack the light • shut the fridge • bed")
 		play("jump", 0.6)
-		save("Phone",2) save("Lighting",2) save("Food",1)
+		save("Phone",2) save("Lighting",1) save("Food",1)
 		ctx.request("RushStart")
 		-- Non-blocking: if Gemini answers in time, the phone starts using its lines.
 		task.spawn(function()
@@ -448,6 +450,7 @@ function Rush.start(ctx)
 		if not alive then return end
 		started = true
 		startTime = os.clock()
+		roommateAt = startTime + random:NextNumber(8, 14)
 	end)
 
 	local controller = {}

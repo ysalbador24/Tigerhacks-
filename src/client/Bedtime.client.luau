@@ -395,7 +395,12 @@ local function apply(key,option)
 	if key=="Lighting" then
 		Lighting.Brightness=if good then 0.7 else 2
 		Lighting.Ambient=if good then Color3.fromRGB(95,80,101) else Color3.fromRGB(150,150,150)
-		for light,brightness in roomLights do if light.Parent then light.Brightness=brightness*(if good then (if light.Parent.Name=="RoomLight" then 0 else 0.35) else 1) end end
+		for light,brightness in roomLights do
+			if light.Parent then
+				if light.Parent.Name=="RoomLight" then light.Enabled=not good end
+				light.Brightness=brightness*(if good then (if light.Parent.Name=="RoomLight" then 0 else 0.35) else 1)
+			end
+		end
 		if expansion then
 			local rocker=expansion.WallLightSwitch.Switch
 			rocker.Orientation=Vector3.new(if good then -15 else 15,0,0)
@@ -589,6 +594,8 @@ choose = function(option)
 		Lighting.ClockTime=22
 		Lighting.Brightness=2; Lighting.Ambient=Color3.fromRGB(110,100,120)
 		setCurtains(false); setCandle(true); setTV(true)
+		Lighting.Brightness=2; apply("Lighting",1)
+		setCurtains(false); setCandle(true); setTV(false)
 		apply("Phone",2); apply("Notifications",2); apply("Temperature",2); apply("Food",2); apply("Lighting",2)
 		for _,p in prompts do p.Enabled=true end
 		refresh(); dialog.Visible=false; showObjective()
@@ -700,7 +707,7 @@ if status then updateMood(status.wellbeing); eveningStarted=status.eveningStarte
 refresh()
 gui.Enabled=true; Lighting.ClockTime=22
 showObjective()
-Lighting.Ambient=Color3.fromRGB(110,100,120)
+apply("Lighting",1)
 for _,p in prompts do p.Enabled=true end
 if rushMode then startRush() end
 -- Polling also recovers a ready dream if a sleep reply was lost. runDream's

@@ -49,7 +49,7 @@ local EVENING_SECONDS = 300
 local TV_ACTION_SECONDS = 4
 local TV_SKIP_SECONDS = 75 -- fifteen of the evening's sixty simulated minutes
 -- In Bedtime Rush, healthy habits take effort: anything left undone falls back to these.
-local rushDefaults = {Phone = 2, Lighting = 2, Food = 1}
+local rushDefaults = {Phone = 2, Lighting = 1, Food = 1}
 local grades = {
 	{95, "S", "Sleep Sensei"},
 	{80, "A", "Well-Rested Legend"},

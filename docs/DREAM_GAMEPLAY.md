@@ -12,7 +12,7 @@ Bedtime choices now change a playable dream. After sleeping, the player crosses 
 - **Shut the midnight fridge.** A mini-fridge next to the sideboard creaks open, glows, and whispers about leftovers. Walk up to it to shut it. It reopens later in the round (up to 3 times). Open at lights-out → late-night snack.
 - **Get to bed.** Use a bed prompt to end the round early; time left adds a bonus. If the timer runs out, you pass out on the floor.
 
-Healthy habits take effort; unhealthy ones happen by default. Anything left undone counts as: phone kept, big light on, no late meal. The optional room activities (shower, reading…) still work, but they use up the clock.
+The main light starts off, but the roommate turns it on during the round. Anything left undone counts as: phone kept, main light left in its current state, no late meal. The optional room activities (shower, reading…) still work, but they use up the clock.
 
 **Grade:** Dream Stability + 2 per counted sheep + up to 15 for getting to bed early. S "Sleep Sensei", A "Well-Rested Legend", B "Decent Napper", C "Chronically Online", D "Raccoon Energy".
 
