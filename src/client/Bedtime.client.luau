@@ -136,7 +136,7 @@ local phoneBedAnchor=layoutAnchors:WaitForChild("PhoneBedAnchor")
 local libraryAnchor=layoutAnchors:WaitForChild("LibraryInteractionAnchor")
 local activities = {
 	{"Curtains","The world outside can wait.","Close the curtains","Leave them open",Vector3.new(-99,22.4,-185)},
-	{"Lighting","A softer glow makes this room feel like a place to rest.","Turn off the main light","Turn on the main light",Vector3.new(-95,17.4,-134.5)},
+	{"Lighting","Lowering the lights helps your body wind down for sleep.","Turn off the main light","Keep the main light on",Vector3.new(-95,17.4,-134.5)},
 	{"Food","Dinner is over. What feels right for the end of your evening?","Finish eating for tonight","Have a late heavy meal",Vector3.new(-62,19,-157)},
 	{"Notifications","The group chat is still buzzing. You can catch up tomorrow.","Turn on Do Not Disturb","Keep notifications on",phoneDeskAnchor.Position+Vector3.new(2,1,0)},
 	{"Temperature","Settle into a room that feels comfortably cool to you.","Make the room comfortably cool","Keep the room warm",Vector3.new(-109,21,-149)},
