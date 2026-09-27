@@ -63,3 +63,6 @@ __pycache__/
 .vscode/
 # Roblox backend URL and game key (copy BackendConfig.example.luau)
 src/server/BackendConfig.luau
+
+# Generated ElevenLabs voice lines (uploaded to Roblox instead)
+backend/backend/barb_lines/

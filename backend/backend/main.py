@@ -1,10 +1,11 @@
 import os
+from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from google import genai
@@ -18,6 +19,7 @@ from google.genai import types
 load_dotenv()
 
 import db  # noqa: E402  (reads DATABASE_URL after .env is loaded)
+import voice  # noqa: E402  (reads ELEVENLABS_API_KEY after .env is loaded)
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
@@ -148,12 +150,16 @@ def health():
         "gemini": gemini_client is not None,
         "database": db.enabled(),
         "timescale": db.timescale,
+        "elevenlabs": voice.enabled(),
     }
 
 
 # -----------------------------------
 # GEMINI REFLECTION
 # -----------------------------------
+
+# Most recent morning report, kept in memory for the dashboard.
+latest_report: dict = {"text": None, "at": None}
 
 @app.post("/reflection")
 def create_reflection(request: ReflectionRequest):
@@ -207,10 +213,14 @@ Rules:
 """
 
     try:
+        reflection = ask_gemini(prompt).strip()
+        # The dashboard reads (and Barb speaks) the most recent report.
+        latest_report["text"] = reflection
+        latest_report["at"] = datetime.now(timezone.utc).isoformat()
         # Send Gemini's response back to the game
         return {
             "choices": request.choices,
-            "reflection": ask_gemini(prompt).strip()
+            "reflection": reflection
         }
 
     except Exception as error:
@@ -305,6 +315,30 @@ def stats():
 def leaderboard():
     require_database()
     return {"leaderboard": db.leaderboard()}
+
+
+# -----------------------------------
+# BARB'S VOICE (ELEVENLABS)
+# -----------------------------------
+
+@app.get("/barb/latest")
+def barb_latest():
+    return {**latest_report, "voice": voice.enabled()}
+
+
+@app.get("/barb/voice")
+def barb_voice():
+    """Barb reads the latest morning report out loud (MP3, cached per report)."""
+    if not voice.enabled():
+        raise HTTPException(status_code=503, detail="Voice is not configured")
+    if not latest_report["text"]:
+        raise HTTPException(status_code=404, detail="No report yet")
+    try:
+        audio = voice.speak(latest_report["text"])
+    except Exception as error:  # noqa: BLE001
+        print("ElevenLabs error:", error)
+        raise HTTPException(status_code=502, detail="Voice request failed")
+    return Response(content=audio, media_type="audio/mpeg")
 
 
 app.mount("/static", StaticFiles(directory=Path(__file__).with_name("static")), name="static")

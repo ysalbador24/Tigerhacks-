@@ -56,6 +56,19 @@ if key:
         report(False, f"Gemini call failed: {error}",
                "Check the key, and GEMINI_MODEL (set it in .env to a model your key can use)")
 
+# ElevenLabs (optional) ------------------------------------------------
+if os.getenv("ELEVENLABS_API_KEY"):
+    try:
+        import voice
+
+        audio = voice.speak("Baa.")
+        report(len(audio) > 1000, f"ElevenLabs spoke ({len(audio) // 1024} KB of Barb)")
+    except Exception as error:  # noqa: BLE001
+        report(False, f"ElevenLabs call failed: {error}",
+               "Check ELEVENLABS_API_KEY (it needs Text to Speech access) and ELEVENLABS_VOICE_ID")
+else:
+    print("  • ELEVENLABS_API_KEY not set (optional: gives Barb a voice)")
+
 # Game key -------------------------------------------------------------
 report(bool(os.getenv("GAME_API_KEY")), "GAME_API_KEY in .env (protects saving nights)",
        "Add GAME_API_KEY=some-secret-word to .env and use the same word in src/server/BackendConfig.luau")

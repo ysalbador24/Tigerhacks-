@@ -67,6 +67,13 @@ return {
 ```
 `BackendConfig.luau` is ignored by git, so the URL and key never get committed. Rojo still syncs it into Studio. HTTP requests are enabled through `default.project.json`.
 
+## Barb's voice (ElevenLabs, optional)
+1. Add `ELEVENLABS_API_KEY=...` to `.env` on your laptop and on the server (`/opt/snooze/.env`), then `systemctl restart snooze`. `/health` shows `"elevenlabs": true`.
+2. Dashboard: the "🔊 Hear Barb" button reads the latest morning report out loud (`GET /barb/voice`, cached per report).
+3. In-game grade lines: on your laptop run `venv/bin/python make_barb_lines.py`. Upload the 5 mp3s in `barb_lines/` to Roblox (Creator Hub → Development Items → Audio, or Studio → Asset Manager → Bulk Import), then paste each id into `src/shared/BarbVoice.luau` as `"rbxassetid://123..."`.
+
+If ElevenLabs refuses requests from the server's IP (free-tier abuse filters sometimes do this), the in-game lines still work because they're recorded once from your laptop.
+
 ## 4. Demo
 Open `https://YOUR-IP-WITH-DASHES.sslip.io/dashboard` on a laptop next to the game. Every night a judge plays shows up within 5 seconds.
 

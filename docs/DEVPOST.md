@@ -17,13 +17,14 @@ You play the last hour of a college student's evening in a cozy dorm room.
   - Late heavy meal? The path drifts like a waterbed and you move slower.
 - **Count sheep.** Ten sheep (Gary, Baaarbara, Fleece Witherspoon…) wait along the path. Your bad habits distract them: some are doomscrolling, some need sunglasses, some are in a food coma. You can only count the ones you didn't ruin.
 - **Get graded.** From S "Sleep Sensei" to D "Raccoon Energy", based on your dream, sheep counted, and how early you got to bed.
-- **Morning report.** Barb the Sleep Sheep, a dry-humored narrator powered by Gemini, explains what each choice did to your dream and gives you one small thing to try tomorrow night.
+- **Morning report.** Barb the Sleep Sheep, a dry-humored narrator powered by Gemini, explains what each choice did to your dream and gives you one small thing to try tomorrow night. Barb also *talks*: her voice comes from ElevenLabs.
 
 ## How we built it
 - **Roblox + Luau, synced with Rojo from a Git repo.** The dorm, campus, and furniture are generated procedurally from code.
 - **The server owns the game.** Choices, scoring, dream checkpoints, fall detection, the win condition, and sheep counts are all validated on the server, so repeated choices can't farm points and players can't skip to the ending.
 - **Deterministic rules from one shared module** (`Dream.luau`): each choice maps to a specific dream effect. The same rules drive the server's validation and the client's per-player dream, so every player sees the dream they earned.
 - **Gemini API, used twice.** It writes personalized dream notifications from the player's choices, and it writes Barb's morning report. Both go through Roblox's text filter, and both fall back to scripted text after 4 seconds, so the demo never hangs.
+- **ElevenLabs voices Barb.** She reads your grade out loud in the game (lines recorded with ElevenLabs text-to-speech and uploaded as Roblox audio), and on the live dashboard a "Hear Barb" button reads the latest Gemini-written report in her voice. Audio is cached per report to save credits, and everything falls back to text if ElevenLabs is unavailable.
 - **Python FastAPI backend on Vultr** (systemd + Caddy HTTPS) that brokers the Gemini calls, so the API key never touches the game.
 - **Tiger Data (TimescaleDB):** every night played is stored in a hypertable, and a continuous aggregate rolls it up hourly. The morning screen shows live community stats ("62% of players doomscrolled; players who docked their phone averaged 71 stability vs 34"). A **live web dashboard** charts habits, grades, and a Sleep Sensei leaderboard in real time. Player ids are stored only as salted hashes.
 

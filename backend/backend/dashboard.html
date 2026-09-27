@@ -32,6 +32,13 @@
   th { color: var(--muted); font-weight: 600; font-size: 13px; }
   .grade { font-weight: 800; }
   .empty { color: var(--muted); padding: 24px 0; text-align: center; }
+  .barb { display: flex; gap: 16px; align-items: center; margin-bottom: 16px; }
+  .barb .quote { flex: 1; margin: 0; font-size: 17px; color: var(--ink); }
+  .barb .credit { display: block; color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .barb button { flex: none; border: 0; border-radius: 12px; padding: 12px 18px; font: inherit; font-weight: 700;
+                 background: var(--warn); color: #26223a; cursor: pointer; min-height: 44px; }
+  .barb button:disabled { opacity: .5; cursor: default; }
+  @media (max-width: 560px) { .barb { flex-direction: column; align-items: stretch; } }
   footer { color: var(--muted); font-size: 13px; margin-top: 24px; }
 </style>
 </head>
@@ -47,6 +54,15 @@
     <div class="tile"><div class="value" id="light">–</div><div class="label">left the big light on 💡</div></div>
     <div class="tile"><div class="value" id="pizza">–</div><div class="label">got midnight-pizza'd 🍕</div></div>
     <div class="tile"><div class="value" id="sheep">–</div><div class="label">avg sheep counted</div></div>
+  </section>
+
+  <section class="card barb">
+    <div style="flex:1">
+      <h2>🐑 Barb's latest morning report</h2>
+      <p class="quote" id="barbText">No reports yet. Somebody go to bed!</p>
+      <span class="credit" id="barbCredit">Written by Gemini · Voice by ElevenLabs</span>
+    </div>
+    <button id="barbPlay" disabled>🔊 Hear Barb</button>
   </section>
 
   <section class="grid">
@@ -142,8 +158,43 @@
       document.querySelector(".sub").textContent = "Waiting for the database… (" + error.message + ")";
     }
   }
+  // Barb's voice: the backend asks ElevenLabs once per report and caches it.
+  const barbText = document.getElementById("barbText");
+  const barbPlay = document.getElementById("barbPlay");
+  let barbAudio = null;
+  let barbVoice = false;
+  async function refreshBarb() {
+    try {
+      const res = await fetch("/barb/latest");
+      if (!res.ok) return;
+      const latest = await res.json();
+      barbVoice = latest.voice;
+      if (!latest.voice) document.getElementById("barbCredit").textContent = "Written by Gemini";
+      if (latest.text && latest.text !== barbText.textContent) barbText.textContent = latest.text;
+      if (!barbAudio || barbAudio.paused) barbPlay.disabled = !(latest.text && latest.voice);
+    } catch (error) { /* keep the last report on screen */ }
+  }
+  barbPlay.addEventListener("click", async () => {
+    barbPlay.disabled = true;
+    barbPlay.textContent = "🐑 Clearing throat…";
+    try {
+      const res = await fetch("/barb/voice?t=" + Date.now());
+      if (!res.ok) throw new Error("voice unavailable");
+      if (barbAudio) URL.revokeObjectURL(barbAudio.src);
+      barbAudio = new Audio(URL.createObjectURL(await res.blob()));
+      barbAudio.addEventListener("ended", () => { barbPlay.textContent = "🔊 Hear Barb"; barbPlay.disabled = !barbVoice; });
+      barbPlay.textContent = "🔊 Barb is talking…";
+      await barbAudio.play();
+    } catch (error) {
+      barbPlay.textContent = "Barb lost her voice 😴";
+      setTimeout(() => { barbPlay.textContent = "🔊 Hear Barb"; barbPlay.disabled = !barbVoice; }, 2500);
+    }
+  });
+
   refresh();
+  refreshBarb();
   setInterval(refresh, 5000);
+  setInterval(refreshBarb, 5000);
 </script>
 </body>
 </html>

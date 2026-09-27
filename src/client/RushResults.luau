@@ -31,6 +31,12 @@ function Results.show(player,result,onReplay)
   local thud=Instance.new("Sound") thud.SoundId="rbxasset://sounds/button.wav" thud.Volume=.8 thud.PlaybackSpeed=.6 thud.Parent=gui thud:Play()
   paper.Rotation=1.5 TweenService:Create(paper,TweenInfo.new(.25,Enum.EasingStyle.Elastic),{Rotation=0}):Play()
   TweenService:Create(title,TweenInfo.new(.35),{TextTransparency=0}):Play()
+  -- Barb reads the grade out loud (ElevenLabs line), if one was uploaded.
+  local ok,lines=pcall(function() return require(game:GetService("ReplicatedStorage").Shared.BarbVoice) end)
+  local id=ok and type(lines)=="table" and lines[result.grade]
+  if type(id)=="string" and id~="" then
+   local barb=Instance.new("Sound") barb.SoundId=id barb.Volume=1 barb.Parent=gui barb:Play()
+  end
  end)
  local habits=0 for _,key in {"Phone","Lighting","Food"} do if result.answers[key]==1 then habits+=1 end end
  local firstLine=if result.rush then string.format("%ds TO SPARE  •  %d/3 HABITS",result.secondsLeft,habits) else string.format("%d/3 HEALTHY HABITS",habits)
