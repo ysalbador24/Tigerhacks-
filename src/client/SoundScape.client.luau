@@ -1,6 +1,6 @@
 -- Ambient sound for the whole night: crickets/rain in the evening, a click when
--- the light changes, muffled TV noise while the TV is on, and dream music
--- (calm, or tense once The Algorithm shows up). Only watches game state; it
+-- the light changes, and dream music (calm, or tense once The Algorithm shows
+-- up). Only watches game state; it
 -- never changes gameplay. Sound ids live in ReplicatedStorage.Shared.GameSounds.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -56,16 +56,6 @@ Lighting:GetPropertyChangedSignal("Brightness"):Connect(function()
 	end
 end)
 
--- Muffled TV: a 3D sound on the screen, played while the TV glow is on.
-local tvSound
-local function tvGlow()
-	local room = workspace:FindFirstChild("CozyBedroom101")
-	local expansion = room and room:FindFirstChild("CottageExpansion")
-	local console = expansion and expansion:FindFirstChild("TelevisionConsole")
-	local screen = console and console:FindFirstChild("TVScreen")
-	return screen, screen and screen:FindFirstChild("EveningTVGlow")
-end
-
 while true do
 	local dt = task.wait(0.2)
 	local dreaming = player:GetAttribute("DreamSeverity") ~= nil
@@ -75,19 +65,4 @@ while true do
 	fade(loops.night, inRoom(), dt)
 	fade(loops.calm, dreaming and not chasing and not severe, dt)
 	fade(loops.tense, dreaming and (chasing or severe), dt)
-
-	if ids.TVNoise ~= "" then
-		local screen, glow = tvGlow()
-		if screen and not tvSound then
-			tvSound = sound(ids.TVNoise, true, screen)
-			if tvSound then
-				tvSound.RollOffMaxDistance = 45
-				tvSound.RollOffMode = Enum.RollOffMode.InverseTapered
-				local muffle = Instance.new("EqualizerSoundEffect")
-				muffle.HighGain = -18; muffle.MidGain = -4; muffle.LowGain = 2
-				muffle.Parent = tvSound
-			end
-		end
-		if tvSound then fade({sound = tvSound, volume = 0.6}, glow ~= nil and glow.Brightness > 0.3 and inRoom(), dt) end
-	end
 end
