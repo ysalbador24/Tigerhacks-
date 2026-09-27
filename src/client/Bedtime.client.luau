@@ -393,8 +393,8 @@ local function apply(key,option)
 	local good=option==1
 	if key=="Curtains" then setCurtains(good) end
 	if key=="Lighting" then
-		Lighting.Brightness=if good then 0.7 else 2
-		Lighting.Ambient=if good then Color3.fromRGB(95,80,101) else Color3.fromRGB(150,150,150)
+		Lighting.Brightness=if good then 0.7 else 1.3
+		Lighting.Ambient=if good then Color3.fromRGB(95,80,101) else Color3.fromRGB(125,112,100)
 		for light,brightness in roomLights do
 			if light.Parent then
 				if light.Parent.Name=="RoomLight" then light.Enabled=not good end
