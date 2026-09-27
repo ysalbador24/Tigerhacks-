@@ -1,6 +1,6 @@
 """Record Barb's grade lines with ElevenLabs for the game's morning report.
 
-Run from backend/backend:  python make_barb_lines.py
+Run from backend/:  python make_barb_lines.py
 It writes barb_lines/barb_S.mp3 ... barb_D.mp3. Upload each one to Roblox
 (Creator Hub -> Development Items -> Audio, or Studio's Asset Manager), then
 paste the asset ids into src/shared/BarbVoice.luau.

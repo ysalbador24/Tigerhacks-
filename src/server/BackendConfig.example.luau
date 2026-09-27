@@ -5,6 +5,6 @@ return {
 	--   "https://abc123.ngrok-free.app"          (ngrok, for testing)
 	--   "https://203-0-113-5.sslip.io"            (Vultr, for judging)
 	url = "",
-	-- Same value as GAME_API_KEY in backend/backend/.env
+	-- Same value as GAME_API_KEY in backend/.env
 	gameKey = "",
 }

@@ -1,6 +1,6 @@
 # Backend: Tiger Data + Gemini + Vultr
 
-The FastAPI backend (`backend/backend/`) does three jobs:
+The FastAPI backend (`backend/`) does three jobs:
 
 | Endpoint | What it does |
 | --- | --- |
@@ -29,7 +29,7 @@ Every feature is optional. The game falls back to scripted text and skips stats 
    apt update && apt install -y python3-venv git caddy
    git clone https://github.com/ysalbador24/Tigerhacks-.git /opt/snooze
    cd /opt/snooze && git checkout claude/roblox-game-design-ss3x82
-   cd backend/backend && python3 -m venv venv && venv/bin/pip install -r requirements.txt
+   cd backend && python3 -m venv venv && venv/bin/pip install -r requirements.txt
    cp .env.example .env && nano .env   # fill in GEMINI_API_KEY, DATABASE_URL, GAME_API_KEY, PLAYER_SALT
    ```
 4. Run it as a service, so it survives SSH logouts and reboots:
@@ -39,8 +39,8 @@ Every feature is optional. The game falls back to scripted text and skips stats 
    Description=Snooze You Choose backend
    After=network.target
    [Service]
-   WorkingDirectory=/opt/snooze/backend/backend
-   ExecStart=/opt/snooze/backend/backend/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
+   WorkingDirectory=/opt/snooze/backend
+   ExecStart=/opt/snooze/backend/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
    Restart=always
    [Install]
    WantedBy=multi-user.target
@@ -79,7 +79,7 @@ Open `https://YOUR-IP-WITH-DASHES.sslip.io/dashboard` on a laptop next to the ga
 
 ## Local development
 ```bash
-cd backend/backend && python3 -m venv venv && venv/bin/pip install -r requirements.txt
+cd backend && python3 -m venv venv && venv/bin/pip install -r requirements.txt
 cp .env.example .env        # fill in; the database URL can point at any Postgres, or leave it empty
 venv/bin/python check_setup.py   # tells you what's connected and how to fix what isn't
 venv/bin/uvicorn main:app --reload

@@ -1,68 +1,29 @@
-# ------------------------------
-# Roblox
-# ------------------------------
-
-# Project place file
-/Tigerhacks-.rbxlx
-
-# Roblox Studio lock files
-/*.rbxlx.lock
+# Roblox / Rojo
+/*.rbxl
+/*.rbxlx
 /*.rbxl.lock
-
-# Rojo generated files
+/*.rbxlx.lock
 sourcemap.json
 
-
-# ------------------------------
-# Python
-# ------------------------------
-
-# Virtual environments
-venv/
-**/venv/
-.venv/
-**/.venv/
-
-# Python cache
-__pycache__/
-**/__pycache__/
-*.py[cod]
-
-
-# ------------------------------
-# Environment Variables / Secrets
-# ------------------------------
-
-# NEVER commit API keys
+# Secrets: never commit keys (templates like .env.example are fine)
 .env
-**/.env
-.env.*
-**/.env.*
-# Downloaded database credentials (e.g. tiger-cloud-db-*-credentials.env / .txt)
 *.env
+.env.*
+!.env.example
 *credentials*.txt
 *credentials*.env
-
-# Templates with no secrets are fine to share
-!.env.example
-!**/.env.example
-
-
-# ------------------------------
-# macOS
-# ------------------------------
-
-.DS_Store
-**/.DS_Store
-
-
-# ------------------------------
-# VS Code
-# ------------------------------
-
-.vscode/
-# Roblox backend URL and game key (copy BackendConfig.example.luau)
 src/server/BackendConfig.luau
 
-# Generated ElevenLabs voice lines (uploaded to Roblox instead)
+# Python
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+
+# Generated audio (uploaded to Roblox instead)
+backend/barb_lines/
 backend/backend/barb_lines/
+
+# Editors and OS
+.vscode/
+.DS_Store

@@ -20,7 +20,7 @@ if configModule then
 	local ok, loaded = pcall(require, configModule)
 	if ok and type(loaded) == "table" then config = loaded else warn("BackendConfig could not be loaded:", loaded) end
 end
--- Public base URL of backend/backend/main.py, e.g. "https://abc123.ngrok-free.app" (no trailing slash).
+-- Public base URL of backend/main.py, e.g. "https://abc123.ngrok-free.app" (no trailing slash).
 local BACKEND_URL = string.gsub(if type(config.url) == "string" then config.url else "", "/+$", "")
 local BACKEND_TIMEOUT = 4
 -- Must match GAME_API_KEY in the backend's .env (protects POST /nights).

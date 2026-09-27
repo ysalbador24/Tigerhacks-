@@ -2,7 +2,7 @@
 
 **Your bedtime choices become your dream.** A Roblox game about sleep habits, made for TigerHacks 2026 (theme: Health).
 
-![Snooze You Choose](docs/roblox-thumbnail.png)
+![Snooze You Choose](docs/images/roblox-thumbnail.png)
 
 It's 10 PM in your dorm and bedtime is at 11. Read a book or doomscroll? Lights off or leave the big light on? Shower, brush your teeth, one more episode? Then fall asleep and play the dream your evening built:
 
@@ -13,11 +13,11 @@ It's 10 PM in your dorm and bedtime is at 11. Read a book or doomscroll? Lights 
 
 Count the sheep you didn't distract, then wake up to **Barb the Sleep Sheep**, who grades your night from S "Sleep Sensei" to D "Raccoon Energy" and gives you one thing to try tomorrow.
 
-![In the room](docs/screenshots/gameplay-1.png)
+![In the room](docs/images/gameplay-1.png)
 
 ## How it works
 
-![How it works](docs/tech-stack.png)
+![How it works](docs/images/tech-stack.png)
 
 | Part | What it does |
 |---|---|
@@ -38,7 +38,7 @@ src/
   client/   Room activities, dream course, morning report, start screen (UI/)
   server/   Choices, scoring, dream checkpoints, backend calls, room builders
   shared/   Dream rules, mood balancing, Barb's voice line ids
-backend/backend/
+backend/
   main.py        FastAPI app (Gemini, ElevenLabs, night history)
   db.py          Tiger Data / TimescaleDB queries   schema.sql  table + aggregate
   voice.py       ElevenLabs text-to-speech          dashboard.html  stats page
@@ -52,7 +52,7 @@ docs/          Devpost story, backend deploy guide, gameplay notes, images
 **Backend:** see [docs/BACKEND_DEPLOY.md](docs/BACKEND_DEPLOY.md).
 
 ```bash
-cd backend/backend
+cd backend
 python3 -m venv venv && venv/bin/pip install -r requirements.txt
 cp .env.example .env            # Gemini, ElevenLabs, and Tiger Data keys
 venv/bin/python check_setup.py  # checks every connection

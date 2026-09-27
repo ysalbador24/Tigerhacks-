@@ -1,4 +1,4 @@
-"""Check the backend's setup: run `python check_setup.py` from backend/backend."""
+"""Check the backend's setup: run `python check_setup.py` from backend/."""
 
 import os
 
