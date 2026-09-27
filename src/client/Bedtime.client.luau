@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Dream = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Dream"))
 local DreamCourse = require(script.Parent:WaitForChild("DreamCourse"))
 local ShowerInteraction = require(script.Parent:WaitForChild("ShowerInteraction"))
+local ReadingInteraction = require(script.Parent:WaitForChild("ReadingInteraction"))
 local BedtimeRush = require(script.Parent:WaitForChild("BedtimeRush"))
 local player = Players.LocalPlayer
 local gui = Instance.new("ScreenGui")
@@ -181,6 +182,10 @@ local choose
 local morningReport
 local rush -- the active Bedtime Rush round, if any
 local shower
+local reading
+local function stopReading()
+	if reading then reading.stop(); reading=nil end
+end
 local function stopShower()
 	if shower then shower.stop(true); shower=nil end
 end
@@ -363,6 +368,7 @@ function runDream(config)
 	if completed then return end
 	objective.Visible=false
 	stopShower()
+	stopReading()
 	eveningClosed=true
 	completed=true; for _,p in prompts do p.Enabled=false end
 	dialog.Visible=false; hud.Visible=false; feedbackPanel.Visible=false
@@ -420,6 +426,7 @@ choose = function(option)
 	if not result then story.Text="Could not save that choice. Please try again."; busy=false; return end
 	if key=="Replay" and result.replay then
 		stopShower()
+		stopReading()
 		if morningReport then morningReport.stop(); morningReport=nil end
 		layout(false)
 		lastWellbeing=nil; updateMood(result.wellbeing,"A fresh evening begins.")
@@ -457,7 +464,14 @@ choose = function(option)
 		end
 		if key=="Reading" and option==1 then
 			first.Visible=false; second.Visible=false; close.Visible=false
-			for remaining=pace(15),1,-1 do if completed or eveningClosed or generation~=eveningGeneration then break end; story.Text="The garden grew quiet as the sun slipped away. Tomorrow could wait another chapter.\n\nReading • "..remaining.." seconds"; task.wait(1) end
+			dialog.Visible=false
+			reading=ReadingInteraction.start(player)
+			local readingSession=reading
+			while readingSession and readingSession.isActive() do
+				if completed or eveningClosed or generation~=eveningGeneration or not readingSession or not readingSession.isActive() then break end
+				task.wait(0.1)
+			end
+			stopReading()
 		end
 		if key=="WindDown" and option==1 then
 			first.Visible=false; second.Visible=false; close.Visible=false
@@ -547,6 +561,7 @@ while gui.Parent do
 			if eveningClosed then
 				objective.Visible=false
 				stopShower()
+				stopReading()
 				for _,p in prompts do p.Enabled=false end
 				dialog.Visible=false
 			end
