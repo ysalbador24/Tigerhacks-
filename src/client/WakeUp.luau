@@ -1,33 +1,11 @@
--- Morning wake-up before Barb's report: the alarm rings, sunrise light fills
+-- Morning wake-up before Barb's report: the alarm clock shakes, sunrise light fills
 -- the room, and the avatar (lying in bed) sits up. Local presentation only;
 -- the character's position and camera are restored when it ends.
 local Lighting = game:GetService("Lighting")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local WakeUp = {}
 WakeUp.DURATION = 3.6
-
-local function alarmSound(parent)
-	local ok, ids = pcall(function() return require(ReplicatedStorage.Shared.GameSounds) end)
-	local id = ok and type(ids) == "table" and ids.AlarmClock
-	if type(id) == "string" and id ~= "" then
-		local s = Instance.new("Sound"); s.SoundId = id; s.Volume = 0.7; s.Parent = parent; s:Play()
-		task.delay(WakeUp.DURATION, function() s:Destroy() end)
-		return
-	end
-	-- Built-in fallback: two bursts of quick beeps.
-	for burst = 0, 1 do
-		for beep = 0, 3 do
-			task.delay(burst * 0.9 + beep * 0.14, function()
-				if not parent.Parent then return end
-				local s = Instance.new("Sound"); s.SoundId = "rbxasset://sounds/electronicpingshort.wav"
-				s.Volume = 0.5; s.PlaybackSpeed = 1.6; s.Parent = parent; s:Play()
-				task.delay(1, function() s:Destroy() end)
-			end)
-		end
-	end
-end
 
 -- Starts the sequence and returns how long to wait before showing the report.
 function WakeUp.play(player)
@@ -46,12 +24,11 @@ function WakeUp.play(player)
 		TweenService:Create(tint, TweenInfo.new(WakeUp.DURATION + 1.5), {TintColor = Color3.new(1, 1, 1), Brightness = 0}):Play()
 		task.delay(WakeUp.DURATION + 1.6, function() tint:Destroy() end)
 
-		-- Alarm clock: ringing label plus sound.
+		-- Alarm clock: ringing label.
 		local label = Instance.new("TextLabel")
 		label.AnchorPoint = Vector2.new(0.5, 0.5); label.Position = UDim2.fromScale(0.5, 0.22); label.Size = UDim2.fromScale(0.5, 0.12)
 		label.BackgroundTransparency = 1; label.Text = "⏰ 7:00 AM"; label.TextScaled = true; label.Font = Enum.Font.FredokaOne
 		label.TextColor3 = Color3.fromRGB(255, 236, 200); label.TextStrokeTransparency = 0.4; label.Parent = gui
-		alarmSound(gui)
 		task.spawn(function()
 			local started = os.clock()
 			while os.clock() - started < 1.9 and label.Parent do

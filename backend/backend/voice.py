@@ -58,23 +58,3 @@ def speak(text: str, model_id: str | None = None, timeout: float = 15) -> bytes:
         _cache.popitem(last=False)
     return audio
 
-
-def sound_effect(prompt: str, seconds: float, loop: bool = False, timeout: float = 90) -> bytes:
-    """Return MP3 bytes of an ElevenLabs sound effect (ambience, clicks, music loops)."""
-    if not API_KEY:
-        raise RuntimeError("ELEVENLABS_API_KEY is not configured")
-    body = {"text": prompt, "duration_seconds": seconds, "prompt_influence": 0.5}
-    if loop:
-        body.update({"loop": True, "model_id": "eleven_text_to_sound_v2"})
-    request = urllib.request.Request(
-        "https://api.elevenlabs.io/v1/sound-generation?output_format=mp3_44100_128",
-        data=json.dumps(body).encode(),
-        headers={"xi-api-key": API_KEY, "Content-Type": "application/json", "Accept": "audio/mpeg"},
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            return response.read()
-    except urllib.error.HTTPError as error:
-        detail = error.read().decode(errors="replace")[:300]
-        raise RuntimeError(f"ElevenLabs HTTP {error.code}: {detail}") from error
