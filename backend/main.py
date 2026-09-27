@@ -131,11 +131,12 @@ class NightRecord(BaseModel):
     @field_validator("routine")
     @classmethod
     def small_routine(cls, routine):
-        allowed = set(db.ROUTINE_KEYS) | {"Activities", "ShowerComfortable"} | set(db.READING_FACTS)
+        allowed = set(db.ROUTINE_KEYS) | {"Activities", "ShowerComfortable", "TemperatureF"} | set(db.READING_FACTS)
         if routine is not None:
             if len(routine) > 20 or not set(routine) <= allowed:
                 raise ValueError("unknown routine keys")
-            if any(not 0 <= value <= 20 for value in routine.values()):
+            # TemperatureF is the thermostat setting in Fahrenheit; everything else is a small count or choice.
+            if any(not (50 <= value <= 90 if key == "TemperatureF" else 0 <= value <= 20) for key, value in routine.items()):
                 raise ValueError("routine values out of range")
         return routine
 
