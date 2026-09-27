@@ -35,13 +35,11 @@ local choices = {
 	Curtains = {"Close the curtains", "Leave them open"},
 	Lighting = {"Use warm, dim lighting", "Keep the bright light"},
 	Food = {"Finish eating for tonight", "Have a late heavy meal"},
-	Phone = {"Put away for the night", "Keep by the bed"},
 	Notifications = {"Turn on Do Not Disturb", "Keep notifications on"},
 	Temperature = {"Make the room comfortably cool", "Keep the room warm"},
 	Shower = {"Take a warm shower", "Skip showering"},
 	BrushTeeth = {"Brush my teeth", "Skip brushing"},
-	Reading = {"Read a quiet chapter", "Skip reading"},
-	WindDown = {"Take a quiet breathing break", "Skip winding down"},
+	WindDown = {"Read a book", "Scroll on phone"},
 }
 local bedroomStart = CFrame.lookAt(Vector3.new(-101, 15.5, -139), Vector3.new(-101, 15.5, -161))
 local checkpoints = Dream.checkpoints()
@@ -109,6 +107,7 @@ local suggestions = {
 	Notifications = "Next night, try turning on Do Not Disturb so late messages can wait.",
 }
 local function scriptedReflection(answers, sheep, sheepTotal)
+	answers = Dream.effectAnswers(answers)
 	local lines, suggestion = {"Baaa-rb here."}, nil
 	for _, key in Dream.essentials do
 		local option = answers[key] or 1
@@ -223,7 +222,7 @@ local function finishNight(player, session)
 	local waitNight = postAsync("/nights", {
 		player_id = tostring(player.UserId),
 		display_name = string.sub(player.DisplayName, 1, 40),
-		phone = session.answers.Phone or 1,
+		phone = session.answers.WindDown or 1,
 		lighting = session.answers.Lighting or 1,
 		food = session.answers.Food or 1,
 		notifications = session.answers.Notifications,
@@ -267,6 +266,30 @@ local function finishNight(player, session)
 	local character = player.Character
 	if character then character:PivotTo(bedroomStart) end
 	return session.result
+end
+
+local ACTION_SECONDS = 4
+local function restoreWindDown(session)
+	local action = session.action
+	if not action then return end
+	if action.root.Parent then
+		action.root.CFrame = action.home
+		action.root.Anchored = action.anchored
+		action.root.AssemblyLinearVelocity = Vector3.zero
+	end
+	if action.humanoid.Parent then
+		action.humanoid.WalkSpeed = action.speed
+		action.humanoid.JumpPower = action.jumpPower
+		action.humanoid.JumpHeight = action.jumpHeight
+		action.humanoid.AutoRotate = action.autoRotate
+	end
+	session.action = nil
+end
+local function finishWindDown(session)
+	if session.phase ~= "winddown" then return end
+	session.answers.WindDown = session.action.option
+	restoreWindDown(session)
+	session.phase = "room"
 end
 
 -- Reserve the transition before any backend request yields. Both the bed and
@@ -314,10 +337,19 @@ remote.OnServerInvoke = function(player, key, option)
 		return {started = true}
 	end
 	expireEvening(player, session)
+	if key == "WindDownFinish" then
+		if session.phase == "winddown" and workspace:GetServerTimeNow() >= session.action.endsAt then finishWindDown(session) end
+		expireEvening(player, session)
+		if session.answers.WindDown then
+			return {accepted = true, option = session.answers.WindDown, wellbeing = Mood.summarize(session.answers), feedback = Mood.feedback("WindDown", session.answers.WindDown)}
+		end
+		return nil
+	end
 	if key == "Status" then
 		return {
 			wellbeing = Mood.summarize(session.answers), demo = DEMO_MODE,
 			eveningStarted = session.eveningStarted, eveningSeconds = EVENING_SECONDS,
+			windDown = session.answers.WindDown,
 			phase = session.phase, dream = if session.phase == "ready" then session.dream else nil,
 		}
 	end
@@ -382,8 +414,25 @@ remote.OnServerInvoke = function(player, key, option)
 		return {accepted = true, wellbeing = Mood.summarize(session.answers), shower = session.shower,
 			feedback = Mood.feedback("Shower", 1) .. (if session.shower.comfortable then " The water felt comfortable." else " The water was outside the comfortable range.")}
 	end
+	if key == "WindDown" then
+		if session.phase ~= "room" or session.answers.WindDown or (option ~= 1 and option ~= 2) then return nil end
+		local room = workspace:FindFirstChild("CozyBedroom101")
+		local anchors = room and room:FindFirstChild("LayoutAnchors")
+		local target = anchors and anchors:FindFirstChild("LibraryInteractionAnchor")
+		local seat = room and room:FindFirstChild("WindowReadingSeat", true)
+		local root = rootOf(player)
+		local human = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+		if not target or not root or not human or human.Health <= 0 or (root.Position-target.Position).Magnitude > 14 then return nil end
+		session.action = {option = option, endsAt = workspace:GetServerTimeNow()+ACTION_SECONDS,
+			root = root, humanoid = human, home = root.CFrame, anchored = root.Anchored,
+			speed = human.WalkSpeed, jumpPower = human.JumpPower, jumpHeight = human.JumpHeight, autoRotate = human.AutoRotate}
+		session.phase = "winddown"
+		root.Anchored = true; human.WalkSpeed = 0; human.JumpPower = 0; human.JumpHeight = 0; human.AutoRotate = false
+		if seat and seat:IsA("BasePart") then root.CFrame = seat.CFrame * CFrame.new(0,seat.Size.Y/2+2,0) end
+		return {action = true, duration = ACTION_SECONDS}
+	end
 	-- Shower completion must come through its interaction, never the old choice dialog.
-	if key == "Shower" then return nil end
+	if key == "Shower" or key == "Phone" or key == "Reading" then return nil end
 	if session.phase ~= "room" or not choices[key] or (option ~= 1 and option ~= 2) then return nil end
 	session.answers[key] = option
 	local feedback = Mood.feedback(key, option)
@@ -394,6 +443,11 @@ end
 task.spawn(function()
 	while true do
 		for player, session in sessions do
+			-- A bounded fallback releases the player if the animation client disconnects or errors.
+			if session.phase == "winddown" and (workspace:GetServerTimeNow() >= session.action.endsAt + 4
+				or not session.action.root.Parent or session.action.humanoid.Health <= 0) then
+				finishWindDown(session)
+			end
 			if not RUSH_MODE and session.phase == "room" and workspace:GetServerTimeNow() >= session.eveningStarted + EVENING_SECONDS then
 				task.spawn(expireEvening, player, session)
 			end
