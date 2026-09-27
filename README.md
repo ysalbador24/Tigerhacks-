@@ -2,6 +2,8 @@
 
 **Your bedtime choices become your dream.** A Roblox game about sleep habits, made for TigerHacks 2026 (theme: Health).
 
+**[Play it on Roblox](https://www.roblox.com/games/74530686281364/Snooze-You-Choose)** · **[Live sleep stats](https://64-177-50-25.sslip.io/dashboard)** · works on phone, tablet, computer, and console
+
 ![Snooze You Choose](docs/images/roblox-thumbnail.png)
 
 It's 10 PM in your dorm and bedtime is at 11. Read a book or doomscroll? Lights off or leave the big light on? Shower, brush your teeth, one more episode? Then fall asleep and play the dream your evening built:
@@ -27,8 +29,6 @@ Count the sheep you didn't distract, then wake up to **Barb the Sleep Sheep**, w
 | **Tiger Data (TimescaleDB)** | Stores every night played (hypertable + hourly continuous aggregate) for community stats. |
 | **Vultr** | Hosts the Python FastAPI backend (HTTPS via Caddy), so no API key ever reaches the game. |
 
-**Live stats page:** https://64-177-50-25.sslip.io/dashboard
-
 If any service is slow or down, the game falls back to scripted text, so a night never breaks.
 
 ## Repository
@@ -45,7 +45,9 @@ backend/
 docs/          Devpost story, backend deploy guide, gameplay notes, images
 ```
 
-## Run it
+## Run it locally (for developers)
+
+You only need this to work on the code; to play, use the Roblox link above.
 
 **Game:** install [Rojo](https://rojo.space) 7.7, run `rojo serve` in this folder, open the place in Roblox Studio, click **Connect** in the Rojo plugin (with Play stopped), then press Play. For AI reports and stats, copy `src/server/BackendConfig.example.luau` to `src/server/BackendConfig.luau` and fill in the backend URL and game key (this file is git-ignored).
 
