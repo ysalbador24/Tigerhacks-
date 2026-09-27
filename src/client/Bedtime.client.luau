@@ -591,7 +591,7 @@ choose = function(option)
 		answers={}; completed=false; eveningClosed=false; eveningGeneration+=1
 		local status=request("Status")
 		eveningStarted=if status then status.eveningStarted else nil
-		Lighting.ClockTime=22
+		Lighting.ClockTime=17.4 -- sunset; the evening fades to night (see below)
 		Lighting.Brightness=2; Lighting.Ambient=Color3.fromRGB(110,100,120)
 		setCurtains(false); setCandle(true); setTV(true)
 		Lighting.Brightness=2; apply("Lighting",1)
@@ -705,7 +705,7 @@ end
 local status=request("Status")
 if status then updateMood(status.wellbeing); eveningStarted=status.eveningStarted; eveningSeconds=status.eveningSeconds end
 refresh()
-gui.Enabled=true; Lighting.ClockTime=22
+gui.Enabled=true; Lighting.ClockTime=17.4
 showObjective()
 apply("Lighting",1)
 for _,p in prompts do p.Enabled=true end
@@ -731,7 +731,8 @@ while gui.Parent do
 		if not completed then
 			local timeText,elapsed=eveningTime()
 			clock.Text=timeText.." • Your evening"
-			Lighting.ClockTime=22+math.clamp(elapsed/eveningSeconds,0,1)
+			-- Sky: golden sunset when you arrive, fully dark by bedtime.
+			Lighting.ClockTime=17.4+math.clamp(elapsed/eveningSeconds,0,1)*4
 			if current=="Sleep" and dialog.Visible then title.Text="Go to sleep at "..timeText.."?" end
 		end
 	end

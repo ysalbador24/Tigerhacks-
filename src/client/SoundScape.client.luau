@@ -1,6 +1,5 @@
--- Ambient sound for the whole night: crickets/rain in the evening, a click when
--- the light changes, and dream music (calm, or tense once The Algorithm shows
--- up). Only watches game state; it
+-- Night sounds: a click when the light changes, and dream music (calm, or tense
+-- once The Algorithm shows up). Only watches game state; it
 -- never changes gameplay. Sound ids live in ReplicatedStorage.Shared.GameSounds.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -24,7 +23,6 @@ end
 
 -- Looping tracks fade toward a target volume instead of cutting in and out.
 local loops = {
-	night = {sound = sound(ids.NightAmbience, true), volume = 0.35},
 	calm = {sound = sound(ids.DreamCalm, true), volume = 0.4},
 	tense = {sound = sound(ids.DreamTense, true), volume = 0.45},
 }
@@ -62,7 +60,6 @@ while true do
 	if dreaming then lastDream = os.clock() end
 	local chasing = player:GetAttribute("AlgorithmChasing") == true
 	local severe = (player:GetAttribute("DreamSeverity") or 0) >= 2
-	fade(loops.night, inRoom(), dt)
 	fade(loops.calm, dreaming and not chasing and not severe, dt)
 	fade(loops.tense, dreaming and (chasing or severe), dt)
 end
