@@ -7,13 +7,16 @@ Everyone knows the sleep advice: put the phone down, dim the lights, don't eat a
 🛏️ **Bedtime (10:00 to 11:00 PM).** You have one in-game hour (five real minutes) in a cozy dorm room to get ready for bed, and you can go to sleep any time. Walk around and try the activities:
 - 📖 **Read or scroll?** Curl up in the reading nook. **Read a book** and flip through short chapters of real CDC sleep facts, each with a quick question. Or **scroll on your phone** through an endless feed of posts (the last one says "Saving my progress… good night, everyone").
 - 🚿 **Shower mini-game.** Step into the shower, drag the temperature slider until the water is "just right", and wipe the fog off the mirror.
-- 💡🍽️🔕🪟❄️🪥 **Quick choices:** main light on or off, a late heavy meal, Do Not Disturb, curtains, room temperature, and brushing your teeth.
+- 🍒 **Cherries or pizza?** A light snack or a slice of pizza at the kitchenette.
+- 🌡️ **Thermostat:** set the room between 64 and 74 °F (65–68 is the sweet spot).
+- 📺 **One more episode?** Watching TV jumps the clock forward 15 minutes.
+- 💡🔕🪟🪥 **Quick choices:** main light on or off, Do Not Disturb, curtains, and brushing your teeth.
 
 🌙 **The dream is built from your choices.**
 - **Good routine:** cloud bridges fill the gaps, your legs feel fast, and the night sky is calm.
 - **Scrolled instead of reading:** **The Algorithm**, a giant phone with googly eyes, swoops in and chases you ("Just one more video!"). If it catches you, you're frozen watching a 45-minute video essay. Notifications written by Gemini knock you off the path.
 - **Bright lights:** the dream glares and platforms blink out under your feet.
-- **Late heavy meal:** you're sluggish and the path won't sit still.
+- **Pizza before bed:** you're sluggish and the path won't sit still.
 - **Several bad habits = sleep debt:** microsleep blinks, whispers, and shadow figures in the corner of your eye.
 
 It gets harder, but never stressful: checkpoints catch you, and a "wake up" button appears if you're stuck.
@@ -29,7 +32,7 @@ It gets harder, but never stressful: checkpoints catch you, and a "wake up" butt
 - **Google Gemini** writes Barb's personalized morning report and the dream's phone notifications. All AI text goes through Roblox's text filter, and the game falls back to scripted text after 4 seconds, so it never hangs.
 - **ElevenLabs** gives Barb her voice. Her grade lines were recorded with ElevenLabs text-to-speech and play in-game, and the live dashboard has a **🔊 Hear Barb** button that reads the latest Gemini-written report in her voice (cached per report to save credits).
 - **Python FastAPI backend on a Vultr server** (Ubuntu, systemd, Caddy for HTTPS) brokers every AI call, so no API key ever touches the game.
-- **Tiger Data (TimescaleDB)** stores every night played in a hypertable, with a continuous aggregate that rolls stats up by the hour. That powers the community line on the morning report and a **live "Sleep Stats" page** (Chart.js) that shows how everyone is sleeping: which bedtime activities players actually do (and skip: the shower is not popular), reading vs. scrolling and its effect on dream stability, grades, and a Sleep Sensei leaderboard. Player IDs are stored only as salted hashes.
+- **Tiger Data (TimescaleDB)** stores every night played in a hypertable, with a continuous aggregate that rolls stats up by the hour. That powers the community line on the morning report and a **live "Sleep Stats" page** (Chart.js) that shows how everyone is sleeping: which bedtime activities players actually do (and skip: the shower is not popular), reading vs. scrolling and its effect on dream stability, grades, a Sleep Sensei leaderboard, and who's playing (monthly players, countries, devices, and whether returning players improve their score). Player IDs are stored only as salted hashes; the only audience data is a country code and device type.
 
 ## Challenges we ran into
 - **Hard but not stressful.** Our first sleep-deprivation effect blurred the screen so much the game was unplayable. We tuned every effect (blur, flicker timing, chase speed) until a bad night felt worse without feeling unfair.

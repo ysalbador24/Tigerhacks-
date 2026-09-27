@@ -6,11 +6,11 @@
 
 ![Snooze You Choose](docs/images/roblox-thumbnail.png)
 
-It's 10 PM in your dorm and bedtime is at 11. Read a book or doomscroll? Lights off or leave the big light on? Shower, brush your teeth, one more episode? Then fall asleep and play the dream your evening built:
+It's 10 PM in your dorm and bedtime is at 11. Read a book or doomscroll? Lights off or leave the big light on? Cherries or pizza? Shower, set the thermostat, one more episode? Then fall asleep and play the dream your evening built:
 
 - **Scrolled in bed?** The Algorithm, a giant googly-eyed phone, chases you through the dream.
 - **Bright lights?** The dream glares and platforms flicker out.
-- **Late heavy meal?** You're sluggish and the path won't sit still.
+- **Pizza before bed?** You're sluggish and the path won't sit still.
 - **Good routine?** Cloud bridges and a calm, starry sky.
 
 Count the sheep you didn't distract, then wake up to **Barb the Sleep Sheep**, who grades your night from S "Sleep Sensei" to D "Raccoon Energy" and gives you one thing to try tomorrow.

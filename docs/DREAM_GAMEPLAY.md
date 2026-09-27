@@ -4,7 +4,7 @@ After bed (or automatically at 11 PM), the player falls asleep into a short plat
 
 ## Difficulty
 
-The three key habits are **read vs. scroll**, **main light off vs. on**, and **finished eating vs. late heavy meal**. Each unhealthy one raises the dream's severity by one (0 to 3); a low "sleep readiness" (for example, one more TV episode) can raise it too.
+The three key habits are **read vs. scroll**, **main light off vs. on**, and **cherries vs. pizza**. Each unhealthy one raises the dream's severity by one (0 to 3); a low "sleep readiness" (for example, one more TV episode) can raise it too.
 
 | Severity | Feel |
 |---|---|

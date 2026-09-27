@@ -1,87 +1,100 @@
-# Backend: Tiger Data + Gemini + Vultr
+# Backend: Vultr + Tiger Data + Gemini + ElevenLabs
 
-The FastAPI backend (`backend/`) does three jobs:
+The game talks to one Python FastAPI app (`backend/`) running on a Vultr server at `https://64-177-50-25.sslip.io`. It keeps every API key off the game and does these jobs:
 
 | Endpoint | What it does |
 | --- | --- |
-| `POST /notifications` | Gemini writes the phone notifications that haunt a scrolling player's dream |
 | `POST /reflection` | Gemini writes Barb the Sleep Sheep's morning report |
-| `POST /nights` | Saves each night to **Tiger Data**; returns community stats and today's rank for the morning screen |
-| `GET /stats`, `GET /leaderboard` | Aggregates for the dashboard |
-| `GET /dashboard` | **Live web dashboard** for judges: habit rates, grades, stability by phone choice, hourly trend, leaderboard |
-| `GET /health` | Shows which features are connected |
+| `POST /notifications` | Gemini writes the phone notifications that haunt a scrolling player's dream |
+| `POST /nights` | Saves each night to Tiger Data (needs the game key); returns community stats and today's rank |
+| `GET /stats`, `GET /leaderboard` | Numbers for the stats page |
+| `GET /barb/latest`, `GET /barb/voice` | The latest morning report, and ElevenLabs reading it aloud (cached per report) |
+| `GET /dashboard` | The Live Sleep Stats page |
+| `GET /health` | Shows which services are connected |
 
-Every feature is optional. The game falls back to scripted text and skips stats whenever the backend is unavailable, so the demo never breaks.
+Every service is optional. If the backend is slow (over 4 seconds) or down, the game uses scripted text and skips the stats, so a night never breaks.
 
-## Data model (Tiger Data / TimescaleDB)
-`schema.sql` creates a `nights` **hypertable** (one row per night: choices, stability, grade, sheep, stumbles, seconds left) and a `nights_hourly` **continuous aggregate** that refreshes every 5 minutes and powers the dashboard's hourly chart. Roblox user ids are stored only as salted SHA-256 hashes. The schema is applied automatically at startup. On plain PostgreSQL, the Timescale-only parts are skipped.
+## Data (Tiger Data / TimescaleDB)
+`schema.sql` creates the `nights` hypertable (one row per night: choices, the full evening routine as JSON, score, grade, sheep, country code, device type) and the `nights_hourly` continuous aggregate that refreshes every 5 minutes. Roblox user ids are stored only as salted SHA-256 hashes. The schema, including new columns, is applied automatically when the backend starts.
 
-## 1. Tiger Data (about 5 minutes)
-1. Sign up at Tiger Data (tigerdata.com, "Tiger Cloud") and create a free service.
-2. Open the service → **Connect** → copy the connection string (`postgres://tsdbadmin:...?sslmode=require`).
-3. That string is your `DATABASE_URL`.
+## How our server is set up
+| What | Where |
+| --- | --- |
+| Server | Vultr Cloud Compute, Ubuntu 24.04, `root@64.177.50.25` |
+| App files and `.env` | `/opt/snooze/` |
+| Service | `snooze` (systemd, uvicorn on `127.0.0.1:8000`, restarts on crash and reboot) |
+| HTTPS | Caddy, `64-177-50-25.sslip.io` → `127.0.0.1:8000`, certificate automatic |
+| Database | Tiger Cloud service (connection string in `.env`) |
 
-## 2. Vultr server (about 20 minutes)
-1. Claim the MLH Vultr credits, then **Deploy → Cloud Compute → Ubuntu 24.04**, smallest plan.
-2. SSH in: `ssh root@YOUR_SERVER_IP`
-3. Install and download the code:
+## Updating the server
+After pulling new backend code, from the `backend/` folder on your laptop:
+```bash
+scp main.py db.py voice.py schema.sql dashboard.html root@64.177.50.25:/opt/snooze/
+ssh root@64.177.50.25 "systemctl restart snooze"
+curl https://64-177-50-25.sslip.io/health
+```
+`/health` should show `"database": true`, `"gemini": true`, and `"elevenlabs": true`. To see errors: `ssh root@64.177.50.25 "journalctl -u snooze -n 50 --no-pager"`.
+
+## Setting it up from scratch
+1. **Tiger Data:** create a free service at Tiger Cloud, open **Connect**, and copy the connection string (`postgres://tsdbadmin:...?sslmode=require`).
+2. **Vultr:** deploy Ubuntu 24.04 (smallest plan), then on the server:
    ```bash
-   apt update && apt install -y python3-venv git caddy
-   git clone https://github.com/ysalbador24/Tigerhacks-.git /opt/snooze
-   cd /opt/snooze && git checkout claude/roblox-game-design-ss3x82
-   cd backend && python3 -m venv venv && venv/bin/pip install -r requirements.txt
-   cp .env.example .env && nano .env   # fill in GEMINI_API_KEY, DATABASE_URL, GAME_API_KEY, PLAYER_SALT
+   apt update && apt install -y python3-venv caddy
+   mkdir -p /opt/snooze
    ```
-4. Run it as a service, so it survives SSH logouts and reboots:
+3. **Copy the backend** from your laptop's `backend/` folder:
+   ```bash
+   scp -r *.py *.sql requirements.txt dashboard.html static .env.example root@SERVER_IP:/opt/snooze/
+   ```
+4. **Install and configure** on the server:
+   ```bash
+   cd /opt/snooze && python3 -m venv venv && venv/bin/pip install -r requirements.txt
+   cp .env.example .env && nano .env   # GEMINI_API_KEY, ELEVENLABS_API_KEY, DATABASE_URL, GAME_API_KEY, PLAYER_SALT
+   ```
+   Make sure `.env` ends with a newline before appending keys with `echo >>`, or two keys end up on one line.
+5. **Run it as a service:**
    ```bash
    cat > /etc/systemd/system/snooze.service <<'UNIT'
    [Unit]
    Description=Snooze You Choose backend
    After=network.target
    [Service]
-   WorkingDirectory=/opt/snooze/backend
-   ExecStart=/opt/snooze/backend/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
+   WorkingDirectory=/opt/snooze
+   ExecStart=/opt/snooze/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
    Restart=always
    [Install]
    WantedBy=multi-user.target
    UNIT
    systemctl enable --now snooze
    ```
-5. HTTPS with Caddy. `sslip.io` gives your IP a free hostname, and Caddy gets the certificate automatically. Replace the dots in your IP with dashes:
+6. **HTTPS:** `sslip.io` turns the IP into a hostname (dots become dashes) and Caddy gets the certificate:
    ```bash
-   echo 'YOUR-IP-WITH-DASHES.sslip.io {
+   echo 'SERVER-IP-WITH-DASHES.sslip.io {
        reverse_proxy 127.0.0.1:8000
    }' > /etc/caddy/Caddyfile
    systemctl restart caddy
    ```
-6. If your Vultr firewall is on, allow ports 80 and 443.
-7. Check `https://YOUR-IP-WITH-DASHES.sslip.io/health`. It should show `"database": true, "gemini": true`.
+   If the Vultr firewall is on, allow ports 80 and 443.
 
-## 3. Connect the game
+## Connecting the game
 Copy `src/server/BackendConfig.example.luau` to `src/server/BackendConfig.luau` and fill it in:
 ```lua
 return {
-	url = "https://YOUR-IP-WITH-DASHES.sslip.io",
+	url = "https://64-177-50-25.sslip.io",
 	gameKey = "same value as GAME_API_KEY",
 }
 ```
-`BackendConfig.luau` is ignored by git, so the URL and key never get committed. Rojo still syncs it into Studio. HTTP requests are enabled through `default.project.json`.
+This file is ignored by git, so the key never gets committed; share it with teammates privately. Rojo syncs it into Studio. HTTP requests are enabled through `default.project.json` (also check **Game Settings → Security → Allow HTTP Requests** for the published game).
 
-## Barb's voice (ElevenLabs, optional)
-1. Add `ELEVENLABS_API_KEY=...` to `.env` on your laptop and on the server (`/opt/snooze/.env`), then `systemctl restart snooze`. `/health` shows `"elevenlabs": true`.
-2. Dashboard: the "🔊 Hear Barb" button reads the latest morning report out loud (`GET /barb/voice`, cached per report).
-3. In-game grade lines: on your laptop run `venv/bin/python make_barb_lines.py`. Upload the 5 mp3s in `barb_lines/` to Roblox (Creator Hub → Development Items → Audio, or Studio → Asset Manager → Bulk Import), then paste each id into `src/shared/BarbVoice.luau` as `"rbxassetid://123..."`.
+## Barb's voice (ElevenLabs)
+- The stats page's **Hear Barb** button uses the server's `ELEVENLABS_API_KEY` (the key needs Text to Speech access).
+- The five in-game grade lines were made once on a laptop with `venv/bin/python make_barb_lines.py`, uploaded to Roblox, and their ids are in `src/shared/BarbVoice.luau`. Roblox only plays them in experiences owned by the uploader (or ones given permission in Creator Hub).
 
-If ElevenLabs refuses requests from the server's IP (free-tier abuse filters sometimes do this), the in-game lines still work because they're recorded once from your laptop.
-
-## 4. Demo
-Open `https://YOUR-IP-WITH-DASHES.sslip.io/dashboard` on a laptop next to the game. Every night a judge plays shows up within 5 seconds.
-
-## Local development
+## Testing backend changes on your laptop
 ```bash
 cd backend && python3 -m venv venv && venv/bin/pip install -r requirements.txt
-cp .env.example .env        # fill in; the database URL can point at any Postgres, or leave it empty
-venv/bin/python check_setup.py   # tells you what's connected and how to fix what isn't
-venv/bin/uvicorn main:app --reload
+cp .env.example .env              # fill in; DATABASE_URL can be any Postgres, or left empty
+venv/bin/python check_setup.py    # checks each connection and says how to fix what isn't working
+venv/bin/uvicorn main:app --reload   # then open http://localhost:8000/dashboard
 ```
-Roblox can't reach `localhost`, so use `ngrok http 8000` and put the ngrok URL in `BackendConfig.luau`.
+The game itself always talks to the Vultr server; deploy with **Updating the server** above when your change works.

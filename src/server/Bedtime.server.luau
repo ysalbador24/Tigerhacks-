@@ -20,7 +20,7 @@ if configModule then
 	local ok, loaded = pcall(require, configModule)
 	if ok and type(loaded) == "table" then config = loaded else warn("BackendConfig could not be loaded:", loaded) end
 end
--- Public base URL of backend/main.py, e.g. "https://abc123.ngrok-free.app" (no trailing slash).
+-- Public HTTPS address of the backend (backend/main.py on Vultr), e.g. "https://203-0-113-5.sslip.io".
 local BACKEND_URL = string.gsub(if type(config.url) == "string" then config.url else "", "/+$", "")
 local BACKEND_TIMEOUT = 4
 -- Must match GAME_API_KEY in the backend's .env (protects POST /nights).
@@ -154,8 +154,7 @@ local function postAsync(path, payload)
 			return HttpService:RequestAsync({
 				Url = BACKEND_URL .. path,
 				Method = "POST",
-				-- ngrok-skip-browser-warning: free ngrok tunnels otherwise answer with an HTML warning page.
-				Headers = {["Content-Type"] = "application/json", ["X-Game-Key"] = GAME_KEY, ["ngrok-skip-browser-warning"] = "true"},
+				Headers = {["Content-Type"] = "application/json", ["X-Game-Key"] = GAME_KEY},
 				Body = HttpService:JSONEncode(payload),
 			})
 		end)

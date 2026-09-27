@@ -1,27 +1,22 @@
-# Bedtime routine
+# The evening
 
-Based on `TigerHacks!!.docx`. The existing intro is unchanged. New gameplay starts only after START completes.
+After **Let's Play**, the player is in their dorm room at **10:00 PM**. Bedtime is **11:00 PM**, five real minutes later (the clock in the corner speeds up if they watch another TV episode). They can go to bed any time; at 11 they fall asleep automatically. The sky outside starts as a warm sunset and is fully dark by bedtime.
 
-Explore room 101 and use proximity prompts for curtains, lighting, food, phone placement, notifications, temperature, and winding down. Each activity offers two choices. Choices may be revisited; points reflect the latest choice, so repeated actions do not farm points. A 45-second sunset begins after the intro. A minute of guided quiet time is available at the reading pouf. Bedtime unlocks after five minutes and all ten choices. Use the bed prompt to see the morning Rest Score and replay.
+Walk up to anything with a marker and choose. Choices can be changed until bedtime; only the latest one counts, so nothing can be farmed.
 
-The server owns choices, timing, and scores. Each player's visual room adjustments are local, so multiplayer choices do not change another player's room. Scores are illustrative game feedback. Session history currently lasts only while connected; database persistence and AI dialogue require a defined purpose and provider before integration.
+| Activity | Healthy choice | Other choice | How it plays |
+|---|---|---|---|
+| Wind down (reading nook) | Read a book | Scroll on phone | **Book:** four short chapters of CDC sleep facts, each with a quick question. **Phone:** an endless feed of posts. Scrolling brings The Algorithm into the dream. |
+| Shower | Take a shower | Skip it | Mini-game: step into the shower, set the water to "just right", wipe the fogged mirror. |
+| Food | Small bowl of cherries | Slice of pizza | Short eating animation at the kitchenette. Pizza makes the dream sluggish. |
+| Thermostat | 65–68 °F | Warmer or colder | Set the room temperature (64–74 °F); Barb mentions it in the morning. |
+| Main light | Turn it off | Keep it on | Light switch; the room goes dim and warm. Leaving it on makes platforms flicker in the dream. |
+| TV | Turn it off | One more episode | An episode plays and the clock jumps forward 15 minutes. |
+| Notifications | Do Not Disturb | Keep them on | More notifications interrupt the dream. |
+| Curtains, brushing teeth | Close / brush | Leave open / skip | Quick choices. |
 
-Room interactions currently use the default furniture coordinates. If you rearrange furniture, update activity positions in `src/client/Bedtime.client.luau` to match.
+The HUD shows the time, activities done, **mood**, **sleep readiness**, and **simulated sleep** (5–9 hours). These are game values for the character, not real-world measurements (see `src/shared/EveningMood.luau`).
 
-Health reference supplied in the brief: https://www.health.harvard.edu/healthy-aging-and-longevity/sleep-hygiene-simple-practices-for-better-rest
+The server owns every choice, the clock, and the score (`src/server/Bedtime.server.luau`); each player's room changes are local to them. When the night ends, the routine is saved to Tiger Data for the stats page (see `BACKEND_DEPLOY.md`).
 
-Devpost capture plan: show the unchanged intro, sunset, two contrasting room choices, the breathing activity, and morning results. Capture the furnished room and results as submission images. Submission text can explain how the game turns bedtime routines into a short, interactive story. Record final media after the desired AI/database scope is confirmed.
-
-## Bathroom and entrance update
-
-The routine now includes ten choices: the original seven plus showering, toothbrushing, and skincare. Bathroom actions play short game sequences (15, 20, and 12 seconds); these timings are gameplay pacing, not real-world hygiene guidance. The shower displays water during its sequence and turns off afterward. All ten choices use the same server-owned score and replay flow.
-
-Room 101's entrance is offset left, at approximately `(-101, 17.7, -133)`. Players spawn just inside at `(-101, 15.5, -139)`, facing into the room. The ensuite connects through a six-stud opening in the west wall near the entrance. The intro script is unchanged.
-
-## Upstairs reading and mood meter
-
-The upstairs nook now includes a built-in bookshelf, an optional choice to read a short chapter, and a second switch for the same main light controlled downstairs. Reading is the eleventh routine choice (reading or skipping both count as a completed choice).
-
-The HUD shows character mood, sleep readiness, and simulated sleep duration. Server responses include the updated values and a short explanation of each choice. Choices replace their previous effects: repeating an action or using both light switches cannot farm mood points. Replay resets mood and readiness to 50. Morning results show the final mood and simulated sleep.
-
-`src/shared/EveningMood.luau` defines fictional balancing values. Mood and readiness are clamped to 0–100. Simulated sleep runs from five to nine hours based on readiness; these numbers describe the game character, not a real-world sleep prediction. Phone scrolling illustrates a tradeoff: a small immediate mood gain with reduced sleep readiness. Skipping optional self-care such as showering or skincare has no mood penalty.
+Moving furniture in Studio: interactions use the room's layout anchors and a few fixed positions in `src/client/Bedtime.client.luau`; update those if you rearrange the room. Health reference: CDC sleep guidance and https://www.health.harvard.edu/healthy-aging-and-longevity/sleep-hygiene-simple-practices-for-better-rest
