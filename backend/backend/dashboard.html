@@ -140,7 +140,7 @@
     WindDown: "📖 Read instead of scrolling", Lighting: "💡 Turned the main light off",
     Food: "🍽️ Skipped the late heavy meal", Notifications: "🔕 Turned on Do Not Disturb",
     Curtains: "🪟 Closed the curtains", Temperature: "❄️ Cooled the room",
-    Shower: "🚿 Took a shower", BrushTeeth: "🪥 Brushed teeth",
+    Shower: "🚿 Took a shower", BrushTeeth: "🪥 Brushed teeth", TV: "📺 Turned off the TV",
   };
   const routineKeys = Object.keys(routineLabels);
   const routineChart = new Chart(document.getElementById("routineChart"), {
@@ -190,7 +190,7 @@
         setText("mostSkipped", order[0][0] + " · only " + order[0][1] + "%");
         setText("mostDone", order[order.length - 1][0] + " · " + order[order.length - 1][1] + "%");
         setText("showerComfy", routine.shower_comfortable == null ? "–" : pct(routine.shower_comfortable) + " of showers");
-        setText("avgActivities", (routine.avg_activities ?? "–") + " of 8");
+        setText("avgActivities", (routine.avg_activities ?? "–") + " of " + routineKeys.length);
       }
 
       const body = document.getElementById("board");

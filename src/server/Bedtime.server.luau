@@ -232,7 +232,7 @@ local function finishNight(player, session)
 	local waitReflection = geminiReflection(session.answers, session.dream, session.stumbles, session.sheep, suggestion)
 	-- Every evening activity for the stats page (missing = skipped). Activities keeps it a JSON object.
 	local routine = {Activities = 0}
-	for _, key in {"WindDown", "Lighting", "Food", "Notifications", "Curtains", "Temperature", "Shower", "BrushTeeth"} do
+	for _, key in {"WindDown", "Lighting", "Food", "Notifications", "Curtains", "Temperature", "Shower", "BrushTeeth", "TV"} do
 		if session.answers[key] then
 			routine[key] = session.answers[key]
 			routine.Activities += 1

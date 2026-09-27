@@ -101,7 +101,7 @@ def community_stats() -> dict:
 
 
 # Evening activities shown on the stats page (keys match the Roblox choices).
-ROUTINE_KEYS = ["WindDown", "Lighting", "Food", "Notifications", "Curtains", "Temperature", "Shower", "BrushTeeth"]
+ROUTINE_KEYS = ["WindDown", "Lighting", "Food", "Notifications", "Curtains", "Temperature", "Shower", "BrushTeeth", "TV"]
 
 
 def routine_stats() -> dict:
