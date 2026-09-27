@@ -180,11 +180,16 @@ end
 local function filtered(player, text, maxLength)
 	if type(text) ~= "string" then return nil end
 	text = string.sub(string.gsub(text, "[\r\n]+", " "), 1, maxLength)
+	-- Only this player sees the text, so filter it for them (age-appropriate)
+	-- rather than for broadcast to everyone.
 	local ok, result = pcall(function()
-		return TextService:FilterStringAsync(text, player.UserId):GetNonChatStringForBroadcastAsync()
+		return TextService:FilterStringAsync(text, player.UserId):GetNonChatStringForUserAsync(player.UserId)
 	end)
-	if ok and result ~= "" then return result end
-	return nil
+	if not ok or result == "" then return nil end
+	-- If the filter hid a real part of it (####), use the scripted text instead.
+	local _, hashes = string.gsub(result, "#", "")
+	if hashes > #result * 0.1 then return nil end
+	return result
 end
 
 local function chosenTexts(answers)
