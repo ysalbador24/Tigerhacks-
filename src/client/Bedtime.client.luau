@@ -322,8 +322,29 @@ local function setTV(on,immediate)
 			card.BorderSizePixel=0; card.Parent=cards; Instance.new("UICorner",card).CornerRadius=UDim.new(0,22)
 		end
 	end
+	local cartoon=display:FindFirstChild("CartoonScene")
+	if not cartoon then
+		cartoon=Instance.new("Frame"); cartoon.Name="CartoonScene"; cartoon.Size=UDim2.fromScale(1,1)
+		cartoon.BackgroundColor3=Color3.fromRGB(125,190,218); cartoon.BorderSizePixel=0; cartoon.Visible=false; cartoon.ClipsDescendants=true; cartoon.Parent=display
+		local sun=Instance.new("Frame"); sun.Name="Sun"; sun.Position=UDim2.fromScale(0.76,0.08); sun.Size=UDim2.fromScale(0.12,0.2)
+		sun.BackgroundColor3=Color3.fromRGB(255,222,122); sun.BorderSizePixel=0; sun.Parent=cartoon; Instance.new("UICorner",sun).CornerRadius=UDim.new(1,0)
+		local ground=Instance.new("Frame"); ground.Name="Ground"; ground.Position=UDim2.fromScale(0,0.7); ground.Size=UDim2.fromScale(1,0.3)
+		ground.BackgroundColor3=Color3.fromRGB(150,191,137); ground.BorderSizePixel=0; ground.Parent=cartoon
+		for index=1,4 do
+			local cloud=Instance.new("Frame"); cloud.Name="Cloud"..index; cloud.Position=UDim2.fromScale(0.05+index*0.2,0.18+(index%2)*0.12); cloud.Size=UDim2.fromScale(0.15,0.08)
+			cloud.BackgroundColor3=cream; cloud.BackgroundTransparency=0.08; cloud.BorderSizePixel=0; cloud.Parent=cartoon; Instance.new("UICorner",cloud).CornerRadius=UDim.new(1,0)
+		end
+		local character=Instance.new("Frame"); character.Name="CartoonCharacter"; character.AnchorPoint=Vector2.new(0.5,1); character.Position=UDim2.fromScale(-0.1,0.76); character.Size=UDim2.fromScale(0.12,0.32)
+		character.BackgroundColor3=Color3.fromRGB(230,174,137); character.BorderSizePixel=0; character.Parent=cartoon; Instance.new("UICorner",character).CornerRadius=UDim.new(0.35,0)
+		local head=Instance.new("Frame"); head.Name="Head"; head.AnchorPoint=Vector2.new(0.5,0.5); head.Position=UDim2.fromScale(0.5,-0.05); head.Size=UDim2.fromScale(0.82,0.5)
+		head.BackgroundColor3=Color3.fromRGB(247,233,212); head.BorderSizePixel=0; head.Parent=character; Instance.new("UICorner",head).CornerRadius=UDim.new(1,0)
+		for _,x in {0.32,0.68} do local eye=Instance.new("Frame"); eye.Size=UDim2.fromScale(0.12,0.18); eye.Position=UDim2.fromScale(x,0.35); eye.BackgroundColor3=ink; eye.BorderSizePixel=0; eye.Parent=head; Instance.new("UICorner",eye).CornerRadius=UDim.new(1,0) end
+		for _,name in {"LeftArm","RightArm"} do local arm=Instance.new("Frame"); arm.Name=name; arm.AnchorPoint=Vector2.new(0.5,0); arm.Position=UDim2.fromScale(if name=="LeftArm" then 0.05 else 0.95,0.18); arm.Size=UDim2.fromScale(0.18,0.55); arm.BackgroundColor3=character.BackgroundColor3; arm.BorderSizePixel=0; arm.Parent=character; Instance.new("UICorner",arm).CornerRadius=UDim.new(1,0) end
+		local logo=Instance.new("TextLabel"); logo.Name="ChannelLogo"; logo.Position=UDim2.fromScale(0.03,0.03); logo.Size=UDim2.fromScale(0.2,0.12); logo.BackgroundColor3=Color3.fromRGB(196,186,230)
+		logo.BackgroundTransparency=0.1; logo.Text="ZZZ TV"; logo.TextColor3=ink; logo.TextScaled=true; logo.Font=Enum.Font.FredokaOne; logo.Parent=cartoon; Instance.new("UICorner",logo).CornerRadius=UDim.new(0,12)
+	end
 	tvAnimationGeneration+=1; local generation=tvAnimationGeneration
-	display.Enabled=true; cards.Visible=true
+	display.Enabled=true; cards.Visible=true; cartoon.Visible=false
 	screen.Material=if on then Enum.Material.Neon else Enum.Material.SmoothPlastic
 	local duration=if immediate then 0 else 0.55
 	local targetColor=if on then Color3.fromRGB(89,115,102) else Color3.fromRGB(22,28,27)
@@ -336,21 +357,37 @@ local function setTV(on,immediate)
 		if titleLabel then TweenService:Create(titleLabel,TweenInfo.new(duration),{TextTransparency=if on then 0.25 else 1,BackgroundTransparency=if on then 0.15 else 1}):Play() end
 	end
 	tv.TVRemote.RoomControlPrompt.ActionText="Choose"
-	if on then
-		task.spawn(function()
-			local palette={Color3.fromRGB(230,174,137),Color3.fromRGB(196,186,230),Color3.fromRGB(183,203,190),Color3.fromRGB(120,196,232)}
-			local step=0
-			while tvOn and generation==tvAnimationGeneration and cards.Parent do
-				step+=1
-				for index,card in cards:GetChildren() do if card:IsA("Frame") then
-					TweenService:Create(card,TweenInfo.new(0.8,Enum.EasingStyle.Sine),{BackgroundColor3=palette[(step+index-2)%#palette+1],Rotation=math.sin(step+index)*2}):Play()
-				end end
-				task.wait(0.9)
-			end
-		end)
-	else
+	if not on then
 		task.delay(duration,function() if generation==tvAnimationGeneration then display.Enabled=false end end)
 	end
+end
+
+local function startTVCartoon()
+	setTV(true)
+	if not expansion then return end
+	local display=expansion.TelevisionConsole.TVScreen.TVDisplay
+	local cards=display:FindFirstChild("SocialCards")
+	local cartoon=display:FindFirstChild("CartoonScene")
+	if not cartoon then return end
+	if cards then cards.Visible=false end
+	cartoon.Visible=true
+	tvAnimationGeneration+=1; local generation=tvAnimationGeneration
+	task.spawn(function()
+		local character=cartoon.CartoonCharacter
+		local leftArm,rightArm=character.LeftArm,character.RightArm
+		local lap=0
+		while tvOn and generation==tvAnimationGeneration and cartoon.Visible and cartoon.Parent do
+			lap+=1; character.Position=UDim2.fromScale(-0.1,0.76)
+			character.BackgroundColor3=if lap%2==0 then Color3.fromRGB(230,174,137) else Color3.fromRGB(196,186,230)
+			local walk=TweenService:Create(character,TweenInfo.new(2.4,Enum.EasingStyle.Linear),{Position=UDim2.fromScale(1.1,0.76)})
+			walk:Play()
+			while walk.PlaybackState==Enum.PlaybackState.Playing and generation==tvAnimationGeneration do
+				local swing=math.sin(os.clock()*10)*24; leftArm.Rotation=swing; rightArm.Rotation=-swing
+				task.wait(0.05)
+			end
+			walk:Cancel(); leftArm.Rotation=0; rightArm.Rotation=0
+		end
+	end)
 end
 local function apply(key,option)
 	local good=option==1
@@ -370,7 +407,7 @@ local function apply(key,option)
 	if key=="Notifications" then phone.Color=if good then ink else Color3.fromRGB(120,196,232); phoneDisplay.Text=if good then "Phone\nQuiet mode" else "Phone\n• • •" end
 	if key=="Temperature" then temperatureText.Text=if good then "67°F • Cool" else "72°F • Warm"; thermostat.Color=if good then Color3.fromRGB(160,200,220) else cream end
 	if key=="Food" then snack.Transparency=if good then 1 else 0 end
-	if key=="TV" then setTV(good==false) end
+	if key=="TV" then if good then setTV(false) else startTVCartoon() end end
 end
 -- Live stats from every night played, stored in Tiger Data by the backend.
 local function communityLine(c)
@@ -420,6 +457,7 @@ function runDream(config)
 	objective.Visible=false
 	stopShower()
 	stopReading()
+	setTV(false)
 	eveningClosed=true
 	completed=true; for _,p in prompts do p.Enabled=false end
 	dialog.Visible=false; hud.Visible=false; feedbackPanel.Visible=false
@@ -477,6 +515,7 @@ choose = function(option)
 		for _,p in prompts do p.Enabled=false end
 		local result=request("TV",2)
 		if result and result.action then
+			startTVCartoon()
 			local screen=expansion and expansion.TelevisionConsole:FindFirstChild("TVScreen")
 			local ok,err=pcall(TVAction.play,player,result.duration,screen)
 			if not ok then warn("TV action failed:",err) end
