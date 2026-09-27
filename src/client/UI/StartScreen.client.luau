@@ -9,10 +9,11 @@ local previous = playerGui:FindFirstChild("StartScreen")
 if previous then previous:Destroy() end
 
 local palette = {
- night = Color3.fromRGB(28,30,49), cream = Color3.fromRGB(247,233,212),
- lavender = Color3.fromRGB(196,186,230), peach = Color3.fromRGB(230,174,137),
+ -- Pixel-art night: deep navy, moonlight cream, dusty blue, moon yellow.
+ night = Color3.fromRGB(12,50,82), cream = Color3.fromRGB(236,228,204),
+ lavender = Color3.fromRGB(158,176,212), peach = Color3.fromRGB(240,222,158),
  wood = Color3.fromRGB(146,99,64), wool = Color3.fromRGB(250,248,240),
- sheep = Color3.fromRGB(60,56,62), muted = Color3.fromRGB(185,181,197),
+ sheep = Color3.fromRGB(60,56,62), muted = Color3.fromRGB(150,170,190),
  gold = Color3.fromRGB(255,206,112), blue = Color3.fromRGB(96,170,235),
 }
 local connections = {}
@@ -38,13 +39,14 @@ local function animate(item, duration, properties)
  return tween
 end
 local function rounded(item, radius)
- create("UICorner", item, {CornerRadius = UDim.new(0, radius)})
+ -- Nearly square corners keep the pixel-art look.
+ create("UICorner", item, {CornerRadius = UDim.new(0, math.min(radius, 3))})
 end
 local function label(parent, name, content, position, size, color, maxSize, font)
  local result = create("TextLabel", parent, {
   Name = name, Text = content, Position = position, Size = size,
   BackgroundTransparency = 1, TextColor3 = color, TextScaled = true,
-  Font = font or Enum.Font.FredokaOne, TextXAlignment = Enum.TextXAlignment.Left,
+  Font = font or Enum.Font.Arcade, TextXAlignment = Enum.TextXAlignment.Left,
  })
  create("UITextSizeConstraint", result, {MinTextSize = 8, MaxTextSize = maxSize})
  return result
@@ -74,13 +76,13 @@ local menu = create("Frame", safe, {Name = "Menu", BackgroundTransparency = 1})
 create("UISizeConstraint", menu, {MinSize = Vector2.new(0,100)})
 local buttonShadow = create("Frame", menu, {
  Name = "ButtonShadow", Position = UDim2.fromScale(0,.065), Size = UDim2.fromScale(1,.5),
- BackgroundColor3 = Color3.fromRGB(149,102,79), BorderSizePixel = 0,
+ BackgroundColor3 = Color3.fromRGB(7,32,54), BorderSizePixel = 0,
 })
 rounded(buttonShadow,12)
 local play = create("TextButton", menu, {
  Name = "StartButton", Size = UDim2.fromScale(1,.5), BackgroundColor3 = palette.peach,
  BorderSizePixel = 0, Text = "LET'S PLAY", TextColor3 = palette.night,
- TextScaled = true, Font = Enum.Font.FredokaOne, AutoButtonColor = false, Selectable = true,
+ TextScaled = true, Font = Enum.Font.Arcade, AutoButtonColor = false, Selectable = true,
 })
 rounded(play,12)
 create("UITextSizeConstraint", play, {MinTextSize = 15, MaxTextSize = 32})
@@ -88,7 +90,7 @@ local buttonScale = create("UIScale", play, {Scale = 1})
 local how = create("TextButton", menu, {
  Name = "HowToPlay", AnchorPoint = Vector2.new(0,1), Position = UDim2.fromScale(0,1), Size = UDim2.new(1,0,0,44),
  BackgroundTransparency = 1, Text = "HOW TO PLAY", TextColor3 = palette.cream,
- Font = Enum.Font.GothamBold, TextScaled = true, Selectable = true,
+ Font = Enum.Font.Arcade, TextScaled = true, Selectable = true,
 })
 create("UITextSizeConstraint", how, {MinTextSize = 12, MaxTextSize = 17})
 
@@ -218,7 +220,7 @@ helpCamera.CFrame=CFrame.lookAt(Vector3.new(1,1,6),Vector3.zero)
 helpSheep.CurrentCamera=helpCamera
 local close=create("TextButton",help,{
  Name="CloseHelp",Position=UDim2.fromScale(.26,.81),Size=UDim2.fromScale(.48,.12),
- Text="GOT IT",TextScaled=true,Font=Enum.Font.FredokaOne,TextColor3=palette.night,
+ Text="GOT IT",TextScaled=true,Font=Enum.Font.Arcade,TextColor3=palette.night,
  BackgroundColor3=palette.lavender,BorderSizePixel=0,Selectable=true,
 })
 rounded(close,7)

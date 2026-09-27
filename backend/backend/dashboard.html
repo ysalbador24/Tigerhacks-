@@ -4,52 +4,59 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Snooze You Choose · Live Sleep Stats</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
 <script src="/static/chart.umd.js"></script>  <!-- Chart.js 4.4.1 (MIT), served locally so venue Wi-Fi can't break it -->
 <style>
   :root {
-    --bg: #17152a; --panel: #242040; --ink: #f7e9d4; --muted: #b9aecb;
-    --good: #9fd6b0; --bad: #f29b8b; --warn: #f5cf7a; --blue: #8fb8e8;
+    /* Pixel-art night: deep navy, moonlight cream, dusty blue, moon yellow. */
+    --bg: #0b2f4d; --panel: #0f3a5c; --ink: #ece4cc; --muted: #a9b9cf;
+    --good: #a7d7b0; --bad: #ec9d8c; --warn: #f0de9e; --blue: #9eb0d4;
+    --edge: #06223a; --pixel: "VT323", ui-monospace, monospace;
   }
   * { box-sizing: border-box; }
   html { background: var(--bg); }
-  body { margin: 0; background: radial-gradient(circle at top, #2c2650, var(--bg) 60%); color: var(--ink);
+  body { margin: 0; color: var(--ink);
+         background: var(--bg) radial-gradient(#ece4cc 1px, transparent 1.5px) 0 0 / 46px 46px;
          font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; min-height: 100vh; }
   main { max-width: 1100px; margin: 0 auto; padding: 28px 16px 48px; }
-  h1 { margin: 0; font-size: clamp(26px, 4vw, 40px); }
+  h1 { margin: 0; font: 400 clamp(34px, 5.5vw, 56px)/1 var(--pixel); letter-spacing: 1px; }
   .sub { color: var(--muted); margin: 4px 0 24px; }
   .live { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--good);
           margin-right: 6px; animation: pulse 1.6s infinite; }
   @keyframes pulse { 50% { opacity: .3; } }
   .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
-  .tile, .card { background: var(--panel); border-radius: 16px; padding: 16px; }
-  .tile .value { font-size: 32px; font-weight: 800; }
+  .tile, .card { background: var(--panel); border: 3px solid var(--ink); border-radius: 2px;
+                 box-shadow: 6px 6px 0 var(--edge); padding: 16px; }
+  .tile .value { font: 400 46px/1 var(--pixel); color: var(--warn); }
   .tile .label { color: var(--muted); font-size: 14px; }
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
-  .card h2 { margin: 0 0 4px; font-size: 18px; }
+  .card h2 { margin: 0 0 4px; font: 400 28px/1.1 var(--pixel); letter-spacing: .5px; }
   .card p { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
   table { width: 100%; border-collapse: collapse; }
-  td, th { text-align: left; padding: 7px 4px; border-bottom: 1px solid #3a345c; }
+  td, th { text-align: left; padding: 7px 4px; border-bottom: 1px dashed #3d6384; }
   th { color: var(--muted); font-weight: 600; font-size: 13px; }
-  .grade { font-weight: 800; }
+  .grade { font: 400 24px/1 var(--pixel); color: var(--warn); }
   .empty { color: var(--muted); padding: 24px 0; text-align: center; }
   .routine { margin-bottom: 16px; }
   .callouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-bottom: 12px; }
-  .callout { background: #2e2952; border-radius: 12px; padding: 10px 12px; }
+  .callout { background: #0b2f4d; border: 2px solid #3d6384; border-radius: 2px; padding: 10px 12px; }
   .callout .label { display: block; color: var(--muted); font-size: 13px; }
-  .callout .value { display: block; font-size: 18px; font-weight: 800; margin-top: 2px; }
+  .callout .value { display: block; font: 400 24px/1.1 var(--pixel); margin-top: 2px; }
   .routineChart { position: relative; height: 340px; }
   .factsTitle { margin-top: 18px !important; }
   .facts { display: grid; gap: 10px; }
   .fact { display: grid; grid-template-columns: minmax(0, 1fr) 56px; gap: 4px 12px; align-items: center; }
   .fact .name { font-size: 15px; }
-  .fact .pct { font-weight: 800; text-align: right; }
-  .fact .bar { grid-column: 1 / -1; height: 8px; border-radius: 4px; background: #3a345c; overflow: hidden; }
-  .fact .bar span { display: block; height: 100%; background: var(--blue); border-radius: 4px; }
+  .fact .pct { font: 400 24px/1 var(--pixel); color: var(--warn); text-align: right; }
+  .fact .bar { grid-column: 1 / -1; height: 10px; background: #0b2f4d; border: 2px solid #3d6384; overflow: hidden; }
+  .fact .bar span { display: block; height: 100%; background: var(--blue); }
   .barb { display: flex; gap: 16px; align-items: center; margin-bottom: 16px; }
   .barb .quote { flex: 1; margin: 0; font-size: 17px; color: var(--ink); }
   .barb .credit { display: block; color: var(--muted); font-size: 13px; margin-top: 6px; }
-  .barb button { flex: none; border: 0; border-radius: 12px; padding: 12px 18px; font: inherit; font-weight: 700;
-                 background: var(--warn); color: #26223a; cursor: pointer; min-height: 44px; }
+  .barb button { flex: none; border: 3px solid var(--ink); border-radius: 2px; padding: 8px 18px; font: 400 26px/1 var(--pixel);
+                 background: var(--warn); color: var(--edge); cursor: pointer; min-height: 44px; box-shadow: 4px 4px 0 var(--edge); }
+  .barb button:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--edge); }
   .barb button:disabled { opacity: .5; cursor: default; }
   @media (max-width: 560px) { .barb { flex-direction: column; align-items: stretch; } }
   footer { color: var(--muted); font-size: 13px; margin-top: 24px; }
@@ -124,22 +131,22 @@
   <footer>Dream Stability and grades are game outcomes, not health measurements. Habits are based on CDC sleep guidance.</footer>
 </main>
 <script>
-  Chart.defaults.color = "#b9aecb";
-  Chart.defaults.borderColor = "#3a345c";
+  Chart.defaults.color = "#a9b9cf";
+  Chart.defaults.borderColor = "#1f4a6e";
   const grades = ["S", "A", "B", "C", "D"];
   const phoneChart = new Chart(document.getElementById("phoneChart"), {
     type: "bar",
-    data: { labels: ["Read a book", "Scrolled on phone"], datasets: [{ data: [0, 0], backgroundColor: ["#9fd6b0", "#f29b8b"], borderRadius: 8 }] },
+    data: { labels: ["Read a book", "Scrolled on phone"], datasets: [{ data: [0, 0], backgroundColor: ["#9fd6b0", "#f29b8b"], borderRadius: 0 }] },
     options: { plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100 } } }
   });
   const gradeChart = new Chart(document.getElementById("gradeChart"), {
     type: "bar",
-    data: { labels: grades, datasets: [{ data: [0, 0, 0, 0, 0], backgroundColor: ["#f5cf7a", "#9fd6b0", "#8fb8e8", "#c9a5e8", "#f29b8b"], borderRadius: 8 }] },
+    data: { labels: grades, datasets: [{ data: [0, 0, 0, 0, 0], backgroundColor: ["#f5cf7a", "#9fd6b0", "#8fb8e8", "#c9a5e8", "#f29b8b"], borderRadius: 0 }] },
     options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
   });
   const hourChart = new Chart(document.getElementById("hourChart"), {
     data: { labels: [], datasets: [
-      { type: "bar", label: "Nights", data: [], backgroundColor: "#8fb8e8", borderRadius: 6, yAxisID: "y", order: 2 },
+      { type: "bar", label: "Nights", data: [], backgroundColor: "#8fb8e8", borderRadius: 0, yAxisID: "y", order: 2 },
       { type: "line", label: "Scrolled %", data: [], borderColor: "#f29b8b", backgroundColor: "#f29b8b", pointRadius: 6, tension: 0.3, yAxisID: "y1", order: 1 }
     ] },
     options: { scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, y1: { position: "right", min: 0, max: 100, grid: { drawOnChartArea: false } } } }
@@ -155,7 +162,7 @@
   const routineKeys = Object.keys(routineLabels);
   const routineChart = new Chart(document.getElementById("routineChart"), {
     type: "bar",
-    data: { labels: routineKeys.map(k => routineLabels[k]), datasets: [{ data: routineKeys.map(() => 0), backgroundColor: "#9fd6b0", borderRadius: 6 }] },
+    data: { labels: routineKeys.map(k => routineLabels[k]), datasets: [{ data: routineKeys.map(() => 0), backgroundColor: "#9fd6b0", borderRadius: 0 }] },
     options: {
       indexAxis: "y", maintainAspectRatio: false,
       plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => c.parsed.x + "% of nights" } } },
