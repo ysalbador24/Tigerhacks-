@@ -1,7 +1,9 @@
 -- Procedural R6/R15 pose using the current avatar; no uploaded animation required.
 local RunService = game:GetService("RunService")
+local ReadingInteraction = require(script.Parent:WaitForChild("ReadingInteraction"))
+local PhoneInteraction = require(script.Parent:WaitForChild("PhoneInteraction"))
 local Action = {}
-function Action.play(player, option, duration, phone)
+function Action.play(player, option, phone)
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
@@ -36,7 +38,9 @@ function Action.play(player, option, duration, phone)
 	end
 	local animate=character:FindFirstChild("Animate")
 	local animateWasEnabled=animate and animate.Enabled
+	local activityGui
 	local function restore()
+		if activityGui then activityGui:Destroy(); activityGui=nil end
 		for joint,cf in joints do if joint.Parent then joint.C0=cf end end
 		if animate and animate.Parent then animate.Enabled=animateWasEnabled end
 		if light then light:Destroy() end
@@ -47,12 +51,19 @@ function Action.play(player, option, duration, phone)
 		camera.CFrame=savedCamera.cf; camera.FieldOfView=savedCamera.fov
 	end
 	local ok,err=xpcall(function()
+		if option==1 then
+			activityGui=ReadingInteraction.openBook(player,function()
+				if activityGui then activityGui:Destroy(); activityGui=nil end
+			end)
+		else
+			activityGui=PhoneInteraction.open(player)
+		end
 		if animate then animate.Enabled=false end
 		local animator=humanoid:FindFirstChildOfClass("Animator")
 		if animator then for _,track in animator:GetPlayingAnimationTracks() do track:Stop(0.1) end end
 		camera.CameraType=Enum.CameraType.Scriptable; camera.FieldOfView=55
 		local began=os.clock()
-		while os.clock()-began<duration and character.Parent and humanoid.Health>0 and player.Character==character do
+		while activityGui and activityGui.Parent and character.Parent and humanoid.Health>0 and player.Character==character do
 			local t=os.clock()-began
 			local scroll=math.sin(t*6)*0.08
 			for joint,cf in joints do

@@ -424,9 +424,9 @@ choose = function(option)
 		for _,p in prompts do p.Enabled=false end
 		local result=request(key,option)
 		if result and result.action then
-			local ok,err=pcall(WindDownAction.play,player,option,result.duration,phone)
+			local ok,err=pcall(WindDownAction.play,player,option,phone)
 			if not ok then warn("Wind Down action failed:",err) end
-			-- Server owns the duration; retry briefly if the action ended early (e.g. respawn).
+			-- Save the choice when the player stops; retry briefly on request failure.
 			local deadline=os.clock()+5
 			repeat
 				result=request("WindDownFinish")
@@ -442,9 +442,15 @@ choose = function(option)
 		eveningClosed=not state or state.phase~="room"
 		if state and state.windDown then answers.WindDown=state.windDown; apply("WindDown",state.windDown); refresh() end
 		for _,p in prompts do
-			p.Enabled=not eveningClosed and not (p:GetAttribute("ActivityKey")=="WindDown" and answers.WindDown~=nil) and not (p.ObjectText=="Shower" and answers.Shower~=nil)
+			p.Enabled=not eveningClosed and not (p.ObjectText=="Shower" and answers.Shower~=nil)
 		end
-		if state and state.dream then task.spawn(runDream,state.dream) end
+		if state and state.dream then
+			task.spawn(runDream,state.dream)
+		elseif state and state.phase=="room" and generation==eveningGeneration and player.Character and player.Character:FindFirstChildOfClass("Humanoid") and player.Character:FindFirstChildOfClass("Humanoid").Health>0 then
+			show("WindDown")
+			title.Text="What would you like to do next?"
+			story.Text="Read again, check your phone, or close this menu to explore. Your latest choice will shape tonight's dream."
+		end
 		return
 	end
 	local result=request(key,option)

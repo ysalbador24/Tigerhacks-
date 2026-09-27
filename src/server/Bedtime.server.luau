@@ -268,7 +268,6 @@ local function finishNight(player, session)
 	return session.result
 end
 
-local ACTION_SECONDS = 4
 local function restoreWindDown(session)
 	local action = session.action
 	if not action then return end
@@ -338,7 +337,7 @@ remote.OnServerInvoke = function(player, key, option)
 	end
 	expireEvening(player, session)
 	if key == "WindDownFinish" then
-		if session.phase == "winddown" and workspace:GetServerTimeNow() >= session.action.endsAt then finishWindDown(session) end
+		if session.phase == "winddown" then finishWindDown(session) end
 		expireEvening(player, session)
 		if session.answers.WindDown then
 			return {accepted = true, option = session.answers.WindDown, wellbeing = Mood.summarize(session.answers), feedback = Mood.feedback("WindDown", session.answers.WindDown)}
@@ -415,7 +414,7 @@ remote.OnServerInvoke = function(player, key, option)
 			feedback = Mood.feedback("Shower", 1) .. (if session.shower.comfortable then " The water felt comfortable." else " The water was outside the comfortable range.")}
 	end
 	if key == "WindDown" then
-		if session.phase ~= "room" or session.answers.WindDown or (option ~= 1 and option ~= 2) then return nil end
+		if session.phase ~= "room" or (option ~= 1 and option ~= 2) then return nil end
 		local room = workspace:FindFirstChild("CozyBedroom101")
 		local anchors = room and room:FindFirstChild("LayoutAnchors")
 		local target = anchors and anchors:FindFirstChild("LibraryInteractionAnchor")
@@ -423,13 +422,13 @@ remote.OnServerInvoke = function(player, key, option)
 		local root = rootOf(player)
 		local human = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
 		if not target or not root or not human or human.Health <= 0 or (root.Position-target.Position).Magnitude > 14 then return nil end
-		session.action = {option = option, endsAt = workspace:GetServerTimeNow()+ACTION_SECONDS,
+		session.action = {option = option,
 			root = root, humanoid = human, home = root.CFrame, anchored = root.Anchored,
 			speed = human.WalkSpeed, jumpPower = human.JumpPower, jumpHeight = human.JumpHeight, autoRotate = human.AutoRotate}
 		session.phase = "winddown"
 		root.Anchored = true; human.WalkSpeed = 0; human.JumpPower = 0; human.JumpHeight = 0; human.AutoRotate = false
 		if seat and seat:IsA("BasePart") then root.CFrame = seat.CFrame * CFrame.new(0,seat.Size.Y/2+2,0) end
-		return {action = true, duration = ACTION_SECONDS}
+		return {action = true}
 	end
 	-- Shower completion must come through its interaction, never the old choice dialog.
 	if key == "Shower" or key == "Phone" or key == "Reading" then return nil end
@@ -443,9 +442,9 @@ end
 task.spawn(function()
 	while true do
 		for player, session in sessions do
-			-- A bounded fallback releases the player if the animation client disconnects or errors.
-			if session.phase == "winddown" and (workspace:GetServerTimeNow() >= session.action.endsAt + 4
-				or not session.action.root.Parent or session.action.humanoid.Health <= 0) then
+			-- Release interrupted activities without imposing a reading or scrolling timer.
+			if session.phase == "winddown" and (not session.action.root.Parent
+				or session.action.humanoid.Health <= 0 or rootOf(player) ~= session.action.root) then
 				finishWindDown(session)
 			end
 			if not RUSH_MODE and session.phase == "room" and workspace:GetServerTimeNow() >= session.eveningStarted + EVENING_SECONDS then
