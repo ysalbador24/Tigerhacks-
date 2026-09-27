@@ -3,7 +3,11 @@ local Input = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local Shower = {}
+-- Set this to a permitted shower/dripping-water audio asset, e.g. rbxassetid://123456.
+local SHOWER_WATER_SOUND_ID = "rbxassetid://127567048109598"
+local activeController
 function Shower.start(player, bathroom, finish)
+	if activeController then activeController.stop(true) end
 	local tray, mirror = bathroom:FindFirstChild("ShowerTray"), bathroom:FindFirstChild("Mirror")
 	if not tray or not mirror then return nil end
 	local controller = {}
@@ -20,8 +24,25 @@ function Shower.start(player, bathroom, finish)
 	steam.Speed = NumberRange.new(1,2); steam.SpreadAngle = Vector2.new(35,35)
 	steam.Rate = 8; steam.Parent = steamAnchor
 	for _, part in bathroom:GetChildren() do
-		if part.Name == "ShowerWater" then water[part] = part.Transparency; part.Transparency = 0.45 end
+		if part.Name == "ShowerWater" then water[part] = part.Transparency; part.Transparency = 1 end
 	end
+	-- Client-created drops and audio are visible/audible only for this player.
+	local effects=Instance.new("Folder"); effects.Name="LocalShowerWater"; effects.Parent=bathroom
+	local head=bathroom:FindFirstChild("ShowerHead")
+	local drops={}
+	if head then
+		for i=1,18 do
+			local drop=Instance.new("Part"); drop.Name="WaterDrop"; drop.Size=Vector3.new(0.045,0.35,0.045)
+			drop.Anchored=true; drop.CanCollide=false; drop.CanTouch=false; drop.CanQuery=false; drop.CastShadow=false
+			drop.Color=Color3.fromRGB(166,210,225); drop.Material=Enum.Material.SmoothPlastic; drop.Transparency=0.38
+			drop.Position=head.Position-Vector3.new(0,0.3,0)
+			drop.Parent=effects
+			table.insert(drops,{part=drop,offset=Vector3.new(((i-1)%3-1)*0.65,-head.Size.Y/2,((math.floor((i-1)/3))%3-1)*0.65),phase=i/18})
+		end
+	end
+	local sound=Instance.new("Sound"); sound.Name="ShowerWaterLoop"; sound.SoundId=SHOWER_WATER_SOUND_ID
+	sound.Volume=0.15; sound.Looped=true; sound.Parent=effects
+	if SHOWER_WATER_SOUND_ID~="" then sound:Play() end
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "ShowerInteraction"; gui.ResetOnSpawn = false; gui.DisplayOrder = 9; gui.Parent = player.PlayerGui
 	local panel = Instance.new("Frame")
@@ -90,13 +111,20 @@ function Shower.start(player, bathroom, finish)
 			return
 		end
 		stopped=true
+		if activeController==controller then activeController=nil end
 		for _,connection in connections do connection:Disconnect() end
+		sound:Stop(); effects:Destroy()
 		for part,transparency in water do if part.Parent then part.Transparency=transparency end end
 		steam.Enabled=false
 		if immediate then steam:Clear(); steamAnchor:Destroy() else task.delay(1.3,function() steamAnchor:Destroy() end) end
 		gui:Destroy()
 	end
 	local function connect(signal,callback) table.insert(connections,signal:Connect(callback)) end
+	activeController=controller
+	connect(gui.Destroying,function() controller.stop(true) end)
+	connect(gui:GetPropertyChangedSignal("Enabled"),function() if not gui.Enabled then controller.stop(true) end end)
+	connect(player.CharacterRemoving,function() controller.stop(true) end)
+	connect(bathroom.Destroying,function() controller.stop(true) end)
 	local function adjust(position)
 		if stopped or submitting then return end
 		temperature=math.clamp((position.X-track.AbsolutePosition.X)/track.AbsoluteSize.X,0,1)
@@ -157,7 +185,16 @@ function Shower.start(player, bathroom, finish)
 	connect(cancel.Activated,function() controller.stop(false) end)
 	connect(RunService.Heartbeat,function()
 		local root=player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-		if not root or (root.Position-tray.Position).Magnitude>16 then controller.stop(true) end
+		local humanoid=player.Character and player.Character:FindFirstChildWhichIsA("Humanoid")
+		if not gui.Parent or not root or not humanoid or humanoid.Health<=0 or (root.Position-tray.Position).Magnitude>16 then controller.stop(true); return end
+		if head and head.Parent then
+			for _,drop in drops do
+				local top=head.CFrame:PointToWorldSpace(drop.offset)
+				local height=math.max(0.1,top.Y-(tray.Position.Y+tray.Size.Y/2+0.18))
+				local progress=(os.clock()*12/height+drop.phase)%1
+				drop.part.Position=top-Vector3.new(0,height*progress,0)
+			end
+		end
 	end)
 	return controller
 end

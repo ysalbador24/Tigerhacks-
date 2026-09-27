@@ -43,10 +43,22 @@ do local c=Instance.new("UITextSizeConstraint"); c.MinTextSize=9; c.MaxTextSize=
 local bedCueDetail=label(hud,"Your bed is waiting upstairs.",UDim2.fromScale(0.14,0.80),UDim2.fromScale(0.72,0.10))
 bedCueDetail.Font=Enum.Font.Gotham; bedCueDetail.TextScaled=true; bedCueDetail.TextColor3=cream
 do local c=Instance.new("UITextSizeConstraint"); c.MinTextSize=8; c.MaxTextSize=12; c.Parent=bedCueDetail end
-local objective=panel(UDim2.fromScale(0.2,0.31),UDim2.fromScale(0.6,0.16))
+local objective=panel(UDim2.fromScale(0.025,0.24),UDim2.new(0.4,0,0,156))
 objective.Name="EveningObjective"; objective.Visible=false
-local objectiveText=label(objective,"You have until 11 PM to get ready for bed. Try activities around the room, or go to bed early. Your choices will affect your dream.",UDim2.fromScale(0.05,0.1),UDim2.fromScale(0.9,0.8))
-objectiveText.TextScaled=true
+objective.BackgroundColor3=cream; objective.BackgroundTransparency=0.06; objective.BorderSizePixel=0
+local objectiveSize=Instance.new("UISizeConstraint"); objectiveSize.MaxSize=Vector2.new(430,156); objectiveSize.Parent=objective
+local objectiveStroke=Instance.new("UIStroke"); objectiveStroke.Color=Color3.fromRGB(230,174,137); objectiveStroke.Thickness=2; objectiveStroke.Parent=objective
+local objectiveHeading=label(objective,"A little time to unwind",UDim2.new(0,16,0,10),UDim2.new(1,-76,0,26))
+objectiveHeading.Name="Heading"; objectiveHeading.Font=Enum.Font.FredokaOne; objectiveHeading.TextColor3=ink; objectiveHeading.TextSize=20; objectiveHeading.TextXAlignment=Enum.TextXAlignment.Left
+local objectiveDecoration=label(objective,"zzz",UDim2.new(1,-52,0,9),UDim2.fromOffset(36,26))
+objectiveDecoration.Font=Enum.Font.FredokaOne; objectiveDecoration.TextColor3=Color3.fromRGB(146,99,64); objectiveDecoration.Rotation=-10
+local objectiveDeadline=label(objective,"Until 11 PM · get ready for bed",UDim2.new(0,16,0,42),UDim2.new(1,-32,0,24))
+objectiveDeadline.Name="Deadline"; objectiveDeadline.BackgroundTransparency=0; objectiveDeadline.BackgroundColor3=Color3.fromRGB(230,174,137); objectiveDeadline.TextColor3=ink; objectiveDeadline.Font=Enum.Font.GothamBold; objectiveDeadline.TextSize=13
+local deadlineCorner=Instance.new("UICorner"); deadlineCorner.CornerRadius=UDim.new(0,8); deadlineCorner.Parent=objectiveDeadline
+local objectiveText=label(objective,"Try activities around the room, or go to bed early.",UDim2.new(0,16,0,73),UDim2.new(1,-32,0,40))
+objectiveText.Name="Instructions"; objectiveText.TextColor3=ink; objectiveText.TextSize=15; objectiveText.TextXAlignment=Enum.TextXAlignment.Left
+local objectiveFooter=label(objective,"Your choices will affect your dream.",UDim2.new(0,16,0,120),UDim2.new(1,-32,0,24))
+objectiveFooter.Name="DreamHint"; objectiveFooter.TextColor3=Color3.fromRGB(99,82,117); objectiveFooter.TextSize=13; objectiveFooter.TextXAlignment=Enum.TextXAlignment.Left
 local objectiveVersion=0
 local function showObjective()
 	objectiveVersion+=1; local version=objectiveVersion
@@ -65,7 +77,6 @@ local moodFill=meter(0.23,Color3.fromRGB(190,205,153))
 local restText=label(moodPanel,"Sleep readiness: 50 / 100",UDim2.fromScale(0.04,0.32),UDim2.fromScale(0.92,0.2))
 local restFill=meter(0.55,Color3.fromRGB(160,191,220))
 local sleepText=label(moodPanel,"Simulated sleep: 7h 00m",UDim2.fromScale(0.04,0.65),UDim2.fromScale(0.92,0.2))
-local note=label(moodPanel,"Character simulation",UDim2.fromScale(0.04,0.87),UDim2.fromScale(0.92,0.1));note.TextSize=11
 local feedbackPanel=panel(UDim2.fromScale(0.2,0.905),UDim2.fromScale(0.6,0.08))
 feedbackPanel.Name="MoodFeedback"
 local feedbackText=label(feedbackPanel,"Your choices shape your character's evening.",UDim2.fromScale(0.03,0.05),UDim2.fromScale(0.94,0.9))
