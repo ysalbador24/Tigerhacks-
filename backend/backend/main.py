@@ -346,6 +346,6 @@ app.mount("/static", StaticFiles(directory=Path(__file__).with_name("static")), 
 
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard():
-    """Live dashboard for judges: habits, grades, and the leaderboard."""
+    """Live sleep stats page: everyone's habits, grades, and the leaderboard."""
     return Path(__file__).with_name("dashboard.html").read_text()
 

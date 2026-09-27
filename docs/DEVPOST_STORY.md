@@ -26,7 +26,7 @@ It gets harder, but never stressful: checkpoints catch you, and a "wake up" butt
 - **Google Gemini** writes Barb's personalized morning report and the dream's phone notifications. All AI text goes through Roblox's text filter, and the game falls back to scripted text after 4 seconds, so it never hangs.
 - **ElevenLabs** gives Barb her voice. Her grade lines were recorded with ElevenLabs text-to-speech and play in-game, and the live dashboard has a **🔊 Hear Barb** button that reads the latest Gemini-written report in her voice (cached per report to save credits).
 - **Python FastAPI backend on a Vultr server** (Ubuntu, systemd, Caddy for HTTPS) brokers every AI call, so no API key ever touches the game.
-- **Tiger Data (TimescaleDB)** stores every night played in a hypertable, with a continuous aggregate that rolls stats up by the hour. That powers the community line on the morning report and a **live judge dashboard** (Chart.js): doomscroll rate, grades, "phone docked vs. kept scrolling" dream stability, and a Sleep Sensei leaderboard. Player IDs are stored only as salted hashes.
+- **Tiger Data (TimescaleDB)** stores every night played in a hypertable, with a continuous aggregate that rolls stats up by the hour. That powers the community line on the morning report and a **live "Sleep Stats" page** (Chart.js) that shows how everyone is sleeping: doomscroll rate, grades, "phone docked vs. kept scrolling" dream stability, and a Sleep Sensei leaderboard. Player IDs are stored only as salted hashes.
 
 ## Challenges we ran into
 - **Hard but not stressful.** Our first sleep-deprivation effect blurred the screen so much the game was unplayable. We tuned every effect (blur, flicker timing, chase speed) until a bad night felt worse without feeling unfair.
