@@ -365,6 +365,11 @@ end
 
 local function prepareCharacter(player, character)
 	local root = character:WaitForChild("HumanoidRootPart")
+	-- The dream course needs jumping; don't depend on place settings.
+	local humanoid = character:WaitForChild("Humanoid")
+	humanoid.UseJumpPower = false
+	humanoid.JumpHeight = 7.2
+	humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
 	character:PivotTo(bedroomStart)
 	root.Anchored = player:GetAttribute("StartedGame") ~= true
 	character:SetAttribute("BedroomReady", true)
