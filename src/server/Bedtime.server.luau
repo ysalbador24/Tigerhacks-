@@ -61,7 +61,6 @@ local sessions = {}
 local function begin(player)
 	sessions[player] = {answers = {}, started = os.clock(), phase = "room"}
 	player:SetAttribute("DreamStumbles", 0)
-	player:SetAttribute("DreamSeverity", nil)
 end
 local function setup(player)
 	player:GetAttributeChangedSignal("StartedGame"):Connect(function()
@@ -240,7 +239,6 @@ local function finishNight(player, session)
 	local ai = reflectionData and filtered(player, reflectionData.reflection, 500)
 	local community = communityStats(waitNight())
 	session.phase = "morning"
-	player:SetAttribute("DreamSeverity", nil)
 	session.result = {
 		grade = grade[2],
 		gradeTitle = grade[3],
@@ -310,11 +308,6 @@ remote.OnServerInvoke = function(player, key, option)
 		session.stumbles = 0
 		session.dreamStarted = os.clock()
 		player:SetAttribute("DreamStumbles", 0)
-		-- Drives the client's sleep-deprivation effects for this dream.
-		local flags = {}
-		for flag in session.dream.flags do table.insert(flags, flag) end
-		player:SetAttribute("DreamFlags", table.concat(flags, ","))
-		player:SetAttribute("DreamSeverity", session.dream.severity or 0)
 		player.Character:PivotTo(Dream.spawnCFrame(checkpoints[1]))
 		return {entered = true}
 	end
