@@ -82,7 +82,7 @@ rounded(buttonShadow,12)
 local play = create("TextButton", menu, {
  Name = "StartButton", Size = UDim2.fromScale(1,.5), BackgroundColor3 = palette.peach,
  BorderSizePixel = 0, Text = "LET'S PLAY", TextColor3 = palette.night,
- TextScaled = true, Font = Enum.Font.Arcade, AutoButtonColor = false, Selectable = true,
+ TextScaled = true, Font = Enum.Font.GothamBold, AutoButtonColor = false, Selectable = true,
 })
 rounded(play,12)
 create("UITextSizeConstraint", play, {MinTextSize = 15, MaxTextSize = 32})
@@ -90,7 +90,7 @@ local buttonScale = create("UIScale", play, {Scale = 1})
 local how = create("TextButton", menu, {
  Name = "HowToPlay", AnchorPoint = Vector2.new(0,1), Position = UDim2.fromScale(0,1), Size = UDim2.new(1,0,0,44),
  BackgroundTransparency = 1, Text = "HOW TO PLAY", TextColor3 = palette.cream,
- Font = Enum.Font.Arcade, TextScaled = true, Selectable = true,
+ Font = Enum.Font.GothamBold, TextScaled = true, Selectable = true,
 })
 create("UITextSizeConstraint", how, {MinTextSize = 12, MaxTextSize = 17})
 
@@ -220,7 +220,7 @@ helpCamera.CFrame=CFrame.lookAt(Vector3.new(1,1,6),Vector3.zero)
 helpSheep.CurrentCamera=helpCamera
 local close=create("TextButton",help,{
  Name="CloseHelp",Position=UDim2.fromScale(.26,.81),Size=UDim2.fromScale(.48,.12),
- Text="GOT IT",TextScaled=true,Font=Enum.Font.Arcade,TextColor3=palette.night,
+ Text="GOT IT",TextScaled=true,Font=Enum.Font.GothamBold,TextColor3=palette.night,
  BackgroundColor3=palette.lavender,BorderSizePixel=0,Selectable=true,
 })
 rounded(close,7)

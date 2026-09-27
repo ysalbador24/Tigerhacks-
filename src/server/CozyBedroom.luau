@@ -1,9 +1,69 @@
 -- Room 101: individually editable, anchored models. No external assets required.
 local Bedroom = {}
+local function clearThermostatView(room)
+	if room:GetAttribute("ThermostatPlantsMoved") then return end
+	local tall=room:FindFirstChild("TallFloorPlant")
+	local expansion=room:FindFirstChild("CottageExpansion")
+	local extras=expansion and expansion:FindFirstChild("CozyAccessories")
+	if not tall or not extras then return end
+	-- Right along the wall when facing the thermostat; keep both pots indoors.
+	local shift=Vector3.new(0,0,-4.5)
+	tall:PivotTo(tall:GetPivot()+shift)
+	for _,p in extras:GetChildren() do
+		if p:IsA("BasePart") and (p.Name=="CeramicPlanter" or p.Name=="Stem" or p.Name=="Leaf")
+			and (p.Position-Vector3.new(-105,13.48,-151)).Magnitude<4.5 then
+			p.CFrame+=shift
+		end
+	end
+	room:SetAttribute("ThermostatPlantsMoved",true)
+end
+local function softenPillows(room)
+	for i=1,3 do
+		local pillow=room:FindFirstChild("Pillow"..i)
+		local cushion=pillow and pillow:FindFirstChild("Cushion")
+		if cushion and cushion:IsA("Part") then
+			-- Keep the named placement part; replace its oval silhouette with a
+			-- softly crowned rectangular pillow made from rounded fabric layers.
+			local old=pillow:FindFirstChild("SoftPillowShape")
+			if old then old:Destroy() end
+			local shape=Instance.new("Model"); shape.Name="SoftPillowShape"; shape.Parent=pillow
+			cushion.Transparency=1
+			cushion.CanCollide=false; cushion.CanTouch=false
+			local width,depth=cushion.Size.X,cushion.Size.Z
+			local height=math.min(width,depth)*0.36
+			local function piece(name,size,offset,rounded)
+				local p=Instance.new("Part"); p.Name=name; p.Size=size
+				p.CFrame=cushion.CFrame*offset; p.Color=cushion.Color; p.Material=Enum.Material.Fabric
+				p.Anchored=true; p.CanCollide=false; p.CanTouch=false; p.CanQuery=false
+				p.TopSurface=Enum.SurfaceType.Smooth; p.BottomSurface=Enum.SurfaceType.Smooth
+				if rounded then p.Shape=Enum.PartType.Cylinder end
+				p.Parent=shape
+			end
+			for layer=-3,3 do
+				local inset=math.abs(layer)/3
+				local w,d=width*(1-0.13*inset^2),depth*(1-0.16*inset^2)
+				local thickness=height/7+0.01
+				local y=layer*height/7
+				local radius=math.min(w,d)*0.18
+				piece("FabricCenter",Vector3.new(w-2*radius,thickness,d),CFrame.new(0,y,0))
+				piece("FabricSides",Vector3.new(w,thickness,d-2*radius),CFrame.new(0,y,0))
+				for _,x in {-1,1} do for _,z in {-1,1} do
+					piece("RoundedCorner",Vector3.new(thickness,2*radius,2*radius),
+						CFrame.new(x*(w/2-radius),y,z*(d/2-radius))*CFrame.Angles(0,0,math.pi/2),true)
+				end end
+			end
+		end
+	end
+end
 function Bedroom.build()
 	local existing = workspace:FindFirstChild("CozyBedroom101")
 	if existing then
+		local pouf=existing:FindFirstChild("PeachReadingPouf")
+		if pouf then pouf:Destroy() end
 		require(script.Parent:WaitForChild("BedroomExpansion")).build(existing)
+		softenPillows(existing)
+		clearThermostatView(existing)
+		require(script.Parent.BedroomKitchenette).build(existing)
 		return existing -- Preserve furniture baked and edited in Studio.
 	end
 	local root = Instance.new("Model")
@@ -162,10 +222,11 @@ function Bedroom.build()
 		box(candle,"Wax",0.9,1+i*0.2,0.9,-5+i*3,7.7,-25,C.cream)
 		box(candle,"Flame",0.12,0.3,0.12,-5+i*3,8.35+i*0.1,-25,C.gold,Enum.Material.Neon)
 	end
-	local ottoman=model("PeachReadingPouf")
-	p(ottoman,"Pouf",Vector3.new(5,2.6,5),Vector3.new(13,1.5,12),C.pink,Enum.Material.Fabric,Enum.PartType.Ball)
 	root.Parent=workspace
 	require(script.Parent:WaitForChild("BedroomExpansion")).build(root)
+	softenPillows(root)
+	clearThermostatView(root)
+	require(script.Parent.BedroomKitchenette).build(root)
 	return root
 end
 return Bedroom

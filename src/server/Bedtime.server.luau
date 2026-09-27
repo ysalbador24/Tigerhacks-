@@ -34,7 +34,7 @@ remote.Parent = ReplicatedStorage
 local choices = {
 	Curtains = {"Close the curtains", "Leave them open"},
 	Lighting = {"Use warm, dim lighting", "Keep the bright light"},
-	Food = {"Finish eating for tonight", "Have a late heavy meal"},
+	Food = {"Small bowl of cherries", "Slice of pizza"},
 	Notifications = {"Turn on Do Not Disturb", "Keep notifications on"},
 	Temperature = {"Make the room comfortably cool", "Keep the room warm"},
 	Shower = {"Take a warm shower", "Skip showering"},
@@ -111,8 +111,8 @@ local reflections = {
 		"The big light stayed on, so your dream went full interrogation room.",
 	},
 	Food = {
-		"Dinner was done early, so the path held still.",
-		"That late heavy meal had the whole dream moving like a waterbed.",
+		"Your lighter food choice kept the dream path steady.",
+		"Your heavier food choice made the dream path drift a little.",
 	},
 }
 local suggestions = {
@@ -249,6 +249,7 @@ local function finishNight(player, session)
 	local waitReflection = geminiReflection(session.answers, session.dream, session.stumbles, session.sheep, suggestion)
 	-- Every evening activity for the stats page (missing = skipped). Activities keeps it a JSON object.
 	local routine = {Activities = 0}
+	routine.TemperatureF = session.temperatureF or 72
 	for _, key in {"WindDown", "Lighting", "Food", "Notifications", "Curtains", "Temperature", "Shower", "BrushTeeth", "TV"} do
 		if session.answers[key] then
 			routine[key] = session.answers[key]
@@ -277,6 +278,8 @@ local function finishNight(player, session)
 	})
 	local reflectionData = waitReflection()
 	local ai = reflectionData and filtered(player, reflectionData.reflection, 500)
+	local temperatureNote = string.format(" Room temperature: %d°F. %s", session.temperatureF or 72,
+		if session.answers.Temperature == 1 then "Perfect!" else "Choose what feels comfortable.")
 	local community = communityStats(waitNight())
 	session.phase = "morning"
 	player:SetAttribute("DreamSeverity", nil)
@@ -294,7 +297,8 @@ local function finishNight(player, session)
 		sheepTotal = #session.dream.sheep,
 		sheepCountable = session.dream.sheepCountable,
 		dreamLines = session.dream.lines,
-		reflection = ai or text,
+		reflection = (ai or text) .. temperatureNote,
+		temperatureF = session.temperatureF or 72,
 		reflectionSource = if ai then "Barb the Sleep Sheep (Gemini)" else "Barb the Sleep Sheep",
 		suggestion = suggestion,
 		community = community,
@@ -539,6 +543,15 @@ remote.OnServerInvoke = function(player, key, option)
 		return {action = true, duration = TV_ACTION_SECONDS}
 	end
 	-- Shower completion must come through its interaction, never the old choice dialog.
+	if key == "Temperature" then
+		if session.phase ~= "room" or type(option) ~= "number" or option ~= option
+			or option < 64 or option > 74 or option % 1 ~= 0 then return nil end
+		session.temperatureF = option
+		local choice = if option >= 65 and option <= 68 then 1 else 2
+		session.answers.Temperature = choice
+		return {accepted = true, option = choice, temperatureF = option,
+			wellbeing = Mood.summarize(session.answers), feedback = Mood.feedback("Temperature", choice)}
+	end
 	if key == "Shower" or key == "Phone" or key == "Reading" then return nil end
 	if session.phase ~= "room" or not choices[key] or (option ~= 1 and option ~= 2) then return nil end
 	session.answers[key] = option
