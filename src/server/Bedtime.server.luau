@@ -10,6 +10,9 @@ local Dream = require(Shared:WaitForChild("Dream"))
 -- habits are played, not clicked. Set false for the full routine (all
 -- activities and five minutes of evening before bed).
 local DEMO_MODE = true
+-- Bedtime Rush (60-second arcade evening). Off = the original room: walk to
+-- objects and choose; the three key choices unlock bed.
+local RUSH_MODE = false
 -- Backend connection lives in src/server/BackendConfig.luau, which git ignores
 -- (copy BackendConfig.example.luau). Without it, the game uses scripted text only.
 local config = {}
@@ -24,6 +27,7 @@ local BACKEND_TIMEOUT = 4
 -- Must match GAME_API_KEY in the backend's .env (protects POST /nights).
 local GAME_KEY = if type(config.gameKey) == "string" then config.gameKey else ""
 ReplicatedStorage:SetAttribute("DemoMode", DEMO_MODE)
+ReplicatedStorage:SetAttribute("BedtimeRush", DEMO_MODE and RUSH_MODE)
 
 local remote = Instance.new("RemoteFunction")
 remote.Name = "BedtimeChoice"
@@ -61,6 +65,7 @@ local sessions = {}
 local function begin(player)
 	sessions[player] = {answers = {}, started = os.clock(), phase = "room"}
 	player:SetAttribute("DreamStumbles", 0)
+	player:SetAttribute("DreamSeverity", nil)
 end
 local function setup(player)
 	player:GetAttributeChangedSignal("StartedGame"):Connect(function()
@@ -239,7 +244,9 @@ local function finishNight(player, session)
 	local ai = reflectionData and filtered(player, reflectionData.reflection, 500)
 	local community = communityStats(waitNight())
 	session.phase = "morning"
+	player:SetAttribute("DreamSeverity", nil)
 	session.result = {
+		rush = DEMO_MODE and RUSH_MODE,
 		grade = grade[2],
 		gradeTitle = grade[3],
 		points = points,
@@ -273,6 +280,13 @@ remote.OnServerInvoke = function(player, key, option)
 		begin(player)
 		return {replay = true, wellbeing = Mood.summarize({})}
 	end
+	-- Gemini-written phone taunts for Bedtime Rush (once per night; nil = use scripted lines).
+	if key == "PhoneTaunts" then
+		if session.phase ~= "room" or session.tauntsRequested then return nil end
+		session.tauntsRequested = true
+		local taunts = geminiNotifications(player, {Phone = 2})
+		return if taunts then {taunts = taunts} else nil
+	end
 	if key == "RushStart" then
 		if session.phase == "room" and not session.rushStarted then session.rushStarted = os.clock() end
 		return {started = true}
@@ -283,7 +297,10 @@ remote.OnServerInvoke = function(player, key, option)
 		if session.phase ~= "room" then return nil end
 		local count = 0
 		for _ in session.answers do count += 1 end
-		if DEMO_MODE then
+		if DEMO_MODE and not RUSH_MODE then
+			local missing = missingEssentials(session.answers)
+			if #missing > 0 then return {message = "Before bed, make tonight's key choices: " .. table.concat(missing, ", ") .. "."} end
+		elseif DEMO_MODE then
 			for _, key in missingEssentials(session.answers) do session.answers[key] = rushDefaults[key] end
 			session.secondsLeft = if session.rushStarted then math.clamp(math.floor(RUSH_SECONDS - (os.clock() - session.rushStarted)), 0, RUSH_SECONDS) else 0
 		else
@@ -308,6 +325,11 @@ remote.OnServerInvoke = function(player, key, option)
 		session.stumbles = 0
 		session.dreamStarted = os.clock()
 		player:SetAttribute("DreamStumbles", 0)
+		-- Drives the client's sleep-deprivation effects for this dream.
+		local flags = {}
+		for flag in session.dream.flags do table.insert(flags, flag) end
+		player:SetAttribute("DreamFlags", table.concat(flags, ","))
+		player:SetAttribute("DreamSeverity", session.dream.severity or 0)
 		player.Character:PivotTo(Dream.spawnCFrame(checkpoints[1]))
 		return {entered = true}
 	end

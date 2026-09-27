@@ -1,10 +1,9 @@
 -- Bedtime Rush: a 60-second arcade round in room 101. Healthy habits take
--- effort (catch the runaway phone, smack the big light, dodge midnight pizza);
+-- effort (catch the runaway phone, smack the big light, shut the midnight fridge);
 -- unhealthy ones happen by default. Choices are still saved on the server.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
-local SoundService = game:GetService("SoundService")
 
 local Rush = {}
 Rush.duration = 60
@@ -16,7 +15,7 @@ local FLOAT_Y = 16.2
 
 local phoneTaunts = {
 	"catch me if u can", "one more reel!!", "ur streak is dying", "*buzz buzz*",
-	"u can't sleep without me", "47 unread lol",
+	"u can't sleep without me", "47 unread lol", "the group chat needs me", "I have commitment issues",
 }
 local sounds = {
 	buzz = "rbxasset://sounds/electronicpingshort.wav",
@@ -46,7 +45,14 @@ local function randomPoint(random, ignore)
 		point = Vector3.new(random:NextNumber(ROOM_MIN.X, ROOM_MAX.X), FLOAT_Y, random:NextNumber(ROOM_MIN.Z, ROOM_MAX.Z))
 		if not ignore or not blocked(point, ignore) then return point end
 	end
-	return point
+	-- A deterministic fallback never knowingly spawns an objective in furniture.
+	for x = ROOM_MIN.X + 2, ROOM_MAX.X - 2, 4 do
+		for z = ROOM_MIN.Z + 2, ROOM_MAX.Z - 2, 4 do
+			local candidate = Vector3.new(x, FLOAT_Y, z)
+			if not blocked(candidate, ignore or {}) then return candidate end
+		end
+	end
+	return nil
 end
 
 local function clampToRoom(point)
@@ -69,104 +75,20 @@ function Rush.start(ctx)
 		local sound = Instance.new("Sound")
 		sound.SoundId = sounds[name]
 		sound.Volume = volume or 0.6
-		sound.Parent = SoundService
+		sound.Name = "RushSound"
+		sound.Parent = folder
 		sound:Play()
 		task.delay(3, function() sound:Destroy() end)
 	end
 
-	-- UI --------------------------------------------------------------
-	local gui = Instance.new("ScreenGui")
-	gui.Name = "BedtimeRushHUD"
-	gui.ResetOnSpawn = false
-	gui.DisplayOrder = 5
-	gui.Parent = player:WaitForChild("PlayerGui")
+	-- Isolated UI/room presentation; existing game rules remain here.
+	local presentation = require(script.Parent.RushPresentation).new(player)
+		local pop = presentation.pop
+	local mark = presentation.mark
 	local function corner(object, radius)
-		local c = Instance.new("UICorner")
-		c.CornerRadius = UDim.new(0, radius)
-		c.Parent = object
+		local c = Instance.new("UICorner") c.CornerRadius = UDim.new(0, radius) c.Parent = object
 	end
-	local function text(parent, value, position, size, textSize, font)
-		local t = Instance.new("TextLabel")
-		t.BackgroundTransparency = 1
-		t.Text = value
-		t.TextColor3 = cream
-		t.Font = font or Enum.Font.GothamBold
-		t.TextSize = textSize
-		t.TextWrapped = true
-		t.Position = position
-		t.Size = size
-		t.Parent = parent
-		return t
-	end
-
-	local bar = Instance.new("Frame")
-	bar.AnchorPoint = Vector2.new(0.5, 0)
-	bar.Position = UDim2.new(0.5, 0, 0, 10)
-	bar.Size = UDim2.fromOffset(420, 58)
-	bar.BackgroundColor3 = ink
-	bar.BackgroundTransparency = 0.1
-	bar.Parent = gui
-	corner(bar, 14)
-	local clockText = text(bar, "10:59 PM • 60s until lights out", UDim2.fromOffset(0, 4), UDim2.new(1, 0, 0, 24), 18)
-	local track = Instance.new("Frame")
-	track.Position = UDim2.new(0, 14, 0, 34)
-	track.Size = UDim2.new(1, -28, 0, 12)
-	track.BackgroundColor3 = Color3.fromRGB(80, 72, 95)
-	track.BorderSizePixel = 0
-	track.Parent = bar
-	corner(track, 6)
-	local fill = Instance.new("Frame")
-	fill.Size = UDim2.fromScale(1, 1)
-	fill.BackgroundColor3 = Color3.fromRGB(150, 205, 170)
-	fill.BorderSizePixel = 0
-	fill.Parent = track
-	corner(fill, 6)
-
-	local goals = Instance.new("Frame")
-	goals.Position = UDim2.new(0, 16, 0, 80)
-	goals.Size = UDim2.fromOffset(300, 150)
-	goals.BackgroundColor3 = ink
-	goals.BackgroundTransparency = 0.1
-	goals.Parent = gui
-	corner(goals, 14)
-	text(goals, "BEDTIME RUSH", UDim2.fromOffset(0, 6), UDim2.new(1, 0, 0, 22), 18, Enum.Font.GothamBlack)
-	local objectives = {}
-	local function objective(key, label, y)
-		local line = text(goals, "○  " .. label, UDim2.new(0, 14, 0, y), UDim2.new(1, -20, 0, 24), 15, Enum.Font.Gotham)
-		line.TextXAlignment = Enum.TextXAlignment.Left
-		objectives[key] = {line = line, label = label}
-	end
-	objective("Phone", "Catch your runaway phone", 32)
-	objective("Lighting", "Smack the big light off", 60)
-	objective("Food", "Dodge the midnight pizza", 88)
-	objective("Bed", "Get to bed (early = bonus)", 116)
-	local function mark(key, state, suffix)
-		local o = objectives[key]
-		o.line.Text = (if state == "done" then "✓  " elseif state == "failed" then "✗  " else "○  ") .. o.label .. (suffix or "")
-		o.line.TextColor3 = if state == "done" then Color3.fromRGB(170, 230, 180) elseif state == "failed" then Color3.fromRGB(255, 160, 140) else cream
-	end
-	mark("Food", "done")
-
-	local big = text(gui, "", UDim2.fromScale(0.1, 0.3), UDim2.fromScale(0.8, 0.2), 64, Enum.Font.GothamBlack)
-	big.TextStrokeTransparency = 0.2
-	big.TextStrokeColor3 = ink
-	local popCount = 0
-	-- Big bouncy text in the middle of the screen.
-	local function pop(message, color, hold)
-		popCount += 1
-		local mine = popCount
-		big.Text = message
-		big.TextColor3 = color or cream
-		big.TextTransparency = 0
-		big.TextStrokeTransparency = 0.2
-		big.TextSize = 20
-		TweenService:Create(big, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {TextSize = 52}):Play()
-		task.delay(hold or 1.4, function()
-			if mine == popCount then
-				TweenService:Create(big, TweenInfo.new(0.4), {TextTransparency = 1, TextStrokeTransparency = 1}):Play()
-			end
-		end)
-	end
+	mark("Food", "pending")
 
 	local function root()
 		local character = player.Character
@@ -211,7 +133,7 @@ function Rush.start(ctx)
 		p.Name = name
 		p.Size = size
 		p.Color = color
-		p.Material = Enum.Material.Neon
+		p.Material = Enum.Material.SmoothPlastic
 		p.Anchored = true
 		p.CanCollide = false
 		p.CanTouch = false
@@ -224,19 +146,52 @@ function Rush.start(ctx)
 	-- The unhealthy defaults: phone out, big light on.
 	ctx.apply("Phone", 2)
 	ctx.apply("Lighting", 2)
+	presentation.lightState(2)
 	ctx.apply("Food", 1)
 
 	-- Runaway phone ---------------------------------------------------
 	local phone = object("RunawayPhone", Vector3.new(1.3, 2.3, 0.3), Color3.fromRGB(96, 170, 235))
-	phone.Position = randomPoint(random, ignore)
+	phone.Position = randomPoint(random, ignore) or Vector3.new(-94, FLOAT_Y, -145)
 	local phoneLabel = bubble(phone, phoneTaunts[1], Color3.fromRGB(60, 120, 220))
+	local screen = Instance.new("SurfaceGui")
+	screen.Face = Enum.NormalId.Front; screen.CanvasSize = Vector2.new(180,300); screen.Parent = phone
+	local feed = Instance.new("Frame")
+	feed.Size = UDim2.fromScale(.86,.9); feed.Position = UDim2.fromScale(.07,.05)
+	feed.BackgroundColor3 = Color3.fromRGB(32,35,48); feed.BorderSizePixel = 0; feed.Parent = screen
+	local battery = Instance.new("TextLabel")
+	battery.BackgroundTransparency = 1; battery.Position = UDim2.fromScale(0,.7); battery.Size = UDim2.fromScale(1,.25)
+	battery.Text = "99%"; battery.TextScaled = true; battery.Font = Enum.Font.GothamBold; battery.TextColor3 = cream; battery.Parent = feed
+	for _, x in {.1,.55} do
+		local eye = Instance.new("Frame") eye.Position = UDim2.fromScale(x,.25); eye.Size = UDim2.fromScale(.35,.24)
+		eye.BackgroundColor3 = cream; eye.BorderSizePixel = 0; eye.Parent = feed; corner(eye,40)
+		local pupil = Instance.new("Frame") pupil.Position = UDim2.fromScale(.4,.3); pupil.Size = UDim2.fromScale(.35,.4)
+		pupil.BackgroundColor3 = ink; pupil.BorderSizePixel = 0; pupil.Parent = eye; corner(pupil,40)
+	end
 	local phoneTarget = phone.Position
 	local phoneCaught = false
 	local nextTaunt = 0
+	-- Gemini writes some of the phone's taunts when the backend is reachable;
+	-- a small tag says so, so judges can see the AI doing something.
+	local geminiTaunts = nil
+	local aiBoard = Instance.new("BillboardGui")
+	aiBoard.Size = UDim2.fromOffset(150, 18)
+	aiBoard.StudsOffset = Vector3.new(0, 4.3, 0)
+	aiBoard.AlwaysOnTop = true
+	aiBoard.Enabled = false
+	aiBoard.Parent = phone
+	local aiTag = Instance.new("TextLabel")
+	aiTag.Size = UDim2.fromScale(1, 1)
+	aiTag.BackgroundTransparency = 1
+	aiTag.Text = "✨ written by Gemini for you"
+	aiTag.TextColor3 = Color3.fromRGB(215, 200, 255)
+	aiTag.TextStrokeTransparency = 0.3
+	aiTag.Font = Enum.Font.GothamBold
+	aiTag.TextScaled = true
+	aiTag.Parent = aiBoard
 
 	-- Big light bulb ---------------------------------------------------
 	local bulb = object("BigLight", Vector3.new(2.2, 2.2, 2.2), Color3.fromRGB(255, 236, 140), Enum.PartType.Ball)
-	bulb.Position = randomPoint(random, ignore)
+	bulb.Position = randomPoint(random, ignore) or Vector3.new(-80, FLOAT_Y, -149)
 	local glow = Instance.new("PointLight")
 	glow.Range = 14
 	glow.Brightness = 2
@@ -246,35 +201,87 @@ function Rush.start(ctx)
 	local roommateAt = nil
 	local roommateDone = false
 
-	-- Pizza ------------------------------------------------------------
-	local pizzas = {}
-	local stuffed = false
-	local nextPizza = 3
+	-- Midnight fridge --------------------------------------------------
+	local fridge = require(script.Parent.RushFridge).new(folder, ignore, function()
+		return randomPoint(random, ignore) or Vector3.new(-66, FLOAT_Y, -176)
+	end)
+	-- It creaks open early, then keeps coming back as the night gets worse.
+	local nextFridge = 7
+	local fridgeOpens = 0
+	local lastPhase = 0
+	local lastCountdown = 6
+	local lightOff = false
+	local pendingSaves = 0
+	local saveQueue = {}
+	local saving = false
+	local stallTime = 0
+	local lastPhonePosition = phone.Position
 
 	-- Round state -------------------------------------------------------
 	local started = false
 	local startTime = 0
 	local finished = false
+	local restingHuman, oldWalkSpeed, oldAutoRotate
 	local function secondsLeft()
 		if not started then return Rush.duration end
 		return math.max(0, Rush.duration - (os.clock() - startTime))
 	end
+	local save -- defined below; finish() records the final fridge state
 	local function finish(reason)
 		if finished then return end
 		finished = true
 		alive = false
+		-- An open fridge at lights-out means a late-night snack.
+		if fridge.isOpen() then
+			save("Food", 2)
+			mark("Food", "failed", " (midnight snack)")
+		else
+			mark("Food", "done")
+		end
 		if reason == "timeout" then
-			pop("11:00 PM! You passed out on the floor.", Color3.fromRGB(255, 190, 150), 2)
+			pop("11:00 PM. FLOOR NAP.", Color3.fromRGB(255, 190, 150), 2, "not your finest work. still counts as sleep.")
 		else
 			mark("Bed", "done", string.format(" (%ds early!)", math.floor(secondsLeft())))
-			pop("Lights out! Sweet dreams...", Color3.fromRGB(190, 210, 255), 2)
+			pop("FINALLY. PEACE.", Color3.fromRGB(190, 210, 255), 1.5, "tomorrow can wait.")
 		end
-		task.delay(1.2, function() ctx.onFinished(reason) end)
+		-- Freeze every distraction before the quiet beat. Flush choices before Sleep.
+		phoneLabel.Text = "zzzz" phone.Transparency = 1 bulb.Parent = nil aiBoard.Enabled = false
+		presentation.peace()
+		if reason == "bed" then
+			local room=workspace:FindFirstChild("CozyBedroom101")
+			local bed=room and room:FindFirstChild("RaisedBed")
+			local mattress=bed and bed:FindFirstChild("Mattress")
+			restingHuman=humanoid()
+			if restingHuman then
+				oldWalkSpeed=restingHuman.WalkSpeed; oldAutoRotate=restingHuman.AutoRotate
+				restingHuman.WalkSpeed=0; restingHuman.AutoRotate=false
+			end
+			if mattress and player.Character then player.Character:PivotTo(mattress.CFrame*CFrame.new(0,mattress.Size.Y/2+2.5,0)) end
+		end
+		for _, sound in ipairs(folder:GetChildren()) do if sound:IsA("Sound") then sound:Stop() end end
+		task.spawn(function()
+			task.wait(1.2)
+			while pendingSaves > 0 do task.wait(.05) end
+			if finished and folder.Parent then ctx.onFinished(reason) end
+		end)
 	end
 
-	local function save(key, option)
-		task.spawn(function() ctx.request(key, option) end)
+	function save(key, option)
+		-- Ordered saves prevent an old roommate update overtaking a later light smack.
+		pendingSaves += 1
+		table.insert(saveQueue, {key, option})
 		ctx.apply(key, option)
+		if key=="Lighting" then presentation.lightState(option) end
+		if saving then return end
+		saving = true
+		task.spawn(function()
+			while #saveQueue > 0 do
+				local item = table.remove(saveQueue, 1)
+				ctx.request(item[1], item[2])
+				pendingSaves -= 1
+			end
+			saving = false
+		end)
 	end
 
 	local function catchPhone()
@@ -282,57 +289,57 @@ function Rush.start(ctx)
 		save("Phone", 1)
 		mark("Phone", "done")
 		play("click")
-		pop("PHONE DOCKED! 📵", Color3.fromRGB(170, 230, 180))
-		phone:Destroy()
+		play("buzz",.12)
+		pop("PHONE DEFEATED", Color3.fromRGB(170, 230, 180), 1.2, "your streak... *one very weak buzz*")
+		presentation.burst(phone.Position, Color3.fromRGB(96,170,235))
+		phoneLabel.Text = "your streak..."
+		TweenService:Create(phone,TweenInfo.new(.3),{Size=Vector3.new(.2,.35,.1),Transparency=1}):Play()
+		task.delay(.35,function() if phone.Parent then phone:Destroy() end end)
+		presentation.bedReady(lightOff)
 	end
 
 	local function smackLight()
+		lightOff = true
+		presentation.burst(bulb.Position, Color3.fromRGB(255,206,112))
+		presentation.bedReady(phoneCaught)
 		save("Lighting", 1)
 		mark("Lighting", "done")
 		play("click")
-		pop("BIG LIGHT: DEFEATED ✨", Color3.fromRGB(255, 236, 160))
+		pop("BIG LIGHT: DEFEATED", Color3.fromRGB(255, 236, 160), 1.2, "oh. this is actually cozy.")
 		bulb.Parent = nil
 		if not roommateDone then roommateAt = os.clock() + random:NextNumber(8, 14) end
 	end
 
 	local function roommate()
+		lightOff = false
+		presentation.bedReady(false)
+		presentation.flash(Color3.fromRGB(255,236,140))
 		roommateDone = true
 		save("Lighting", 2)
 		mark("Lighting", "failed", " (roommate!)")
 		play("oof", 0.5)
-		pop("Your roommate turned the big light back on 🙄", Color3.fromRGB(255, 220, 140), 2.2)
-		bulb.Position = randomPoint(random, ignore)
+		shake()
+		presentation.roommate()
+		pop("THE BIG LIGHT. AGAIN?!", Color3.fromRGB(255, 220, 140), 1.8, "your roommate has entered the chat.")
+		bulb.Position = randomPoint(random, ignore) or Vector3.new(-80,FLOAT_Y,-149)
 		bulb.Parent = folder
 	end
 
-	local function pizzaHit()
-		shake()
-		play("oof", 0.7)
-		if not stuffed then
-			stuffed = true
-			save("Food", 2)
-			mark("Food", "failed", " (pizza'd)")
-			pop("MIDNIGHT PIZZA'D! 🍕", Color3.fromRGB(255, 180, 110))
-		else
-			pop("*burp*", Color3.fromRGB(255, 200, 150), 0.8)
-		end
+	local function openFridge()
+		fridgeOpens += 1
+		fridge.open()
+		mark("Food", "pending", if fridgeOpens > 1 then " (it's back)" else nil)
+		presentation.burst(fridge.position + Vector3.new(0, 2, 0), Color3.fromRGB(255, 240, 200))
+		pop(if fridgeOpens == 1 then "THE FRIDGE IS OPEN" else "THE FRIDGE. AGAIN.", Color3.fromRGB(255, 210, 120), 1.3,
+			if fridgeOpens == 1 then "it's whispering about leftovers. go shut it." else "it's always back. it knows.")
 	end
 
-	local function spawnPizza(from)
-		local slice = object("MidnightPizza", Vector3.new(2.2, 0.4, 2.2), Color3.fromRGB(245, 165, 70))
-		slice.Position = from
-		local tag = Instance.new("BillboardGui")
-		tag.Size = UDim2.fromOffset(40, 40)
-		tag.AlwaysOnTop = true
-		tag.Parent = slice
-		local icon = Instance.new("TextLabel")
-		icon.Size = UDim2.fromScale(1, 1)
-		icon.BackgroundTransparency = 1
-		icon.Text = "🍕"
-		icon.TextScaled = true
-		icon.Parent = tag
-		table.insert(pizzas, {part = slice, velocity = Vector3.zero, born = os.clock()})
-		return pizzas[#pizzas]
+	local function shutFridge()
+		fridge.close()
+		mark("Food", "done")
+		play("click")
+		presentation.burst(fridge.position + Vector3.new(0, 2, 0), Color3.fromRGB(170, 210, 180))
+		pop("KITCHEN CLOSED", Color3.fromRGB(170, 230, 180), 1.1, "the leftovers will survive until breakfast.")
 	end
 
 	-- Main loop -------------------------------------------------------
@@ -342,33 +349,58 @@ function Rush.start(ctx)
 		local left = secondsLeft()
 		local r = root()
 
-		-- Timer bar: calm green to panic red.
-		local fraction = left / Rush.duration
-		fill.Size = UDim2.fromScale(fraction, 1)
-		fill.BackgroundColor3 = Color3.fromRGB(150, 205, 170):Lerp(Color3.fromRGB(235, 90, 90), 1 - fraction)
-		clockText.Text = string.format("10:%02d PM • %ds until lights out", math.min(59, 60 - math.ceil(left)), math.ceil(left))
+		local elapsed = now - startTime
+		presentation.update(left, elapsed)
+		local phase = if elapsed < 15 then 0 elseif elapsed < 30 then 1 elseif elapsed < 45 then 2 else 3
+		if phase > lastPhase then
+			lastPhase = phase
+			if phase == 1 then pop("15 SECONDS IN. VIBES: CHAOTIC.", Color3.fromRGB(255,210,120), 1.1, "the fridge is plotting something.")
+			elseif phase == 2 then pop("30 SECONDS. ZERO CHILL.", cream, 1, "phone battery: emotionally unavailable.")
+			else pop("BEDTIME PANIC!", Color3.fromRGB(255,160,140), 1, "the bed is your exit.") end
+		end
+		if left <= 5 and math.ceil(left) < lastCountdown and left > 0 then
+			lastCountdown = math.ceil(left)
+			pop(tostring(lastCountdown).."!",Color3.fromRGB(255,160,140),.55)
+			play("click",.35)
+		end
 		if left <= 0 then finish("timeout"); return end
 
 		-- Phone flees when you get close, but its battery runs down.
 		if not phoneCaught and phone.Parent then
 			local elapsed = now - startTime
-			local speed = if elapsed > 30 then 6 else 10
+			local speed = if elapsed > 30 then 3.5 else 9
+			-- A short hesitation makes it mischievous and gives the player a fair catch window.
+			if elapsed % 6 > 4.8 then speed *= .2 end
 			if r then
 				local away = Vector3.new(phone.Position.X - r.Position.X, 0, phone.Position.Z - r.Position.Z)
 				if away.Magnitude < 15 and (phoneTarget - phone.Position).Magnitude < 2 then
 					local dir = if away.Magnitude > 0.1 then away.Unit else Vector3.new(1, 0, 0)
 					local candidate = clampToRoom(phone.Position + dir * 10 + Vector3.new(random:NextNumber(-4, 4), 0, random:NextNumber(-4, 4)))
 					-- Cornered? Dash somewhere random instead.
-					if (candidate - phone.Position).Magnitude < 4 or blocked(candidate, ignore) then candidate = randomPoint(random, ignore) end
+					if (candidate - phone.Position).Magnitude < 4 or blocked(candidate, ignore) then candidate = randomPoint(random, ignore) or phone.Position end
 					phoneTarget = candidate
 				end
 			end
 			local step = phoneTarget - phone.Position
 			local base = if step.Magnitude > 0.05 then phone.Position + step.Unit * math.min(step.Magnitude, speed * dt) else phone.Position
-			phone.CFrame = CFrame.new(Vector3.new(base.X, FLOAT_Y + math.abs(math.sin(now * 6)) * 0.8, base.Z)) * CFrame.Angles(0, now * 3, math.sin(now * 20) * 0.15)
+			if blocked(Vector3.new(base.X,FLOAT_Y,base.Z),ignore) then
+				base=phone.Position phoneTarget=randomPoint(random,ignore) or phone.Position
+			end
+			if (Vector3.new(base.X,0,base.Z)-Vector3.new(lastPhonePosition.X,0,lastPhonePosition.Z)).Magnitude < .01 then stallTime += dt else stallTime=0 end
+			if stallTime > 1.2 then phoneTarget=randomPoint(random,ignore) or phone.Position stallTime=0 end
+			lastPhonePosition=base
+			local floating = Vector3.new(base.X, FLOAT_Y + math.abs(math.sin(now * 6)) * 0.8, base.Z)
+			local facing = if r then Vector3.new(r.Position.X-floating.X,0,r.Position.Z-floating.Z) else Vector3.new(0,0,1)
+			if facing.Magnitude < .01 then facing=Vector3.new(0,0,1) end
+			phone.CFrame = CFrame.lookAt(floating,floating+facing) * CFrame.Angles(0,0,math.sin(now * 15)*.09)
+			battery.Text = if elapsed>30 then "3%" else tostring(math.max(4,99-math.floor(elapsed*3))).."%"
 			if now >= nextTaunt then
 				nextTaunt = now + 2.5
-				phoneLabel.Text = if elapsed > 30 then "battery 3%... so tired" else phoneTaunts[random:NextInteger(1, #phoneTaunts)]
+				local useGemini = elapsed <= 30 and geminiTaunts ~= nil and random:NextNumber() < 0.6
+				aiBoard.Enabled = useGemini
+				phoneLabel.Text = if elapsed > 30 then (if elapsed % 8 < 4 then "battery 3%..." else "tell my charger I loved them")
+					elseif useGemini then geminiTaunts[random:NextInteger(1, #geminiTaunts)]
+					else phoneTaunts[random:NextInteger(1, #phoneTaunts)]
 				if elapsed <= 30 then play("buzz", 0.25) end
 			end
 			if r and (r.Position - phone.Position).Magnitude < 4.5 then catchPhone() end
@@ -383,29 +415,13 @@ function Rush.start(ctx)
 			roommate()
 		end
 
-		-- Pizza: slices launch from the walls and fly at where you are now.
-		local elapsed = now - startTime
-		if r and elapsed >= nextPizza then
-			nextPizza = elapsed + math.max(1.3, 3 - elapsed / 30)
-			local edge = random:NextInteger(1, 4)
-			local from = if edge == 1 then Vector3.new(ROOM_MIN.X, FLOAT_Y, random:NextNumber(ROOM_MIN.Z, ROOM_MAX.Z))
-				elseif edge == 2 then Vector3.new(ROOM_MAX.X, FLOAT_Y, random:NextNumber(ROOM_MIN.Z, ROOM_MAX.Z))
-				elseif edge == 3 then Vector3.new(random:NextNumber(ROOM_MIN.X, ROOM_MAX.X), FLOAT_Y, ROOM_MIN.Z)
-				else Vector3.new(random:NextNumber(ROOM_MIN.X, ROOM_MAX.X), FLOAT_Y, ROOM_MAX.Z)
-			local pizza = spawnPizza(from)
-			local aim = Vector3.new(r.Position.X, FLOAT_Y, r.Position.Z) - from
-			pizza.velocity = if aim.Magnitude > 0.1 then aim.Unit * (16 + elapsed / 6) else Vector3.zero
+		-- Fridge: opens on a schedule that tightens as the round escalates.
+		if not fridge.isOpen() and elapsed >= nextFridge and left > 6 and fridgeOpens < 3 then
+			openFridge()
 		end
-		for index = #pizzas, 1, -1 do
-			local pizza = pizzas[index]
-			local position = pizza.part.Position + pizza.velocity * dt
-			pizza.part.CFrame = CFrame.new(position) * CFrame.Angles(0, now * 8, 0)
-			local hit = r and (r.Position - position).Magnitude < 3.2
-			if hit then pizzaHit() end
-			if hit or now - pizza.born > 5 then
-				pizza.part:Destroy()
-				table.remove(pizzas, index)
-			end
+		if fridge.update(now, if r then r.Position else nil) then
+			shutFridge()
+			nextFridge = elapsed + (if elapsed < 30 then 12 else 8)
 		end
 	end))
 
@@ -418,9 +434,18 @@ function Rush.start(ctx)
 			task.wait(0.8)
 		end
 		if not alive then return end
-		pop("BEDTIME RUSH!", Color3.fromRGB(255, 210, 120), 1.2)
+		pop("BEDTIME RUSH!", Color3.fromRGB(255, 210, 120), 1.2, "catch your phone • smack the light • shut the fridge • bed")
 		play("jump", 0.6)
-		task.spawn(function() ctx.request("RushStart") end)
+		save("Phone",2) save("Lighting",2) save("Food",1)
+		ctx.request("RushStart")
+		-- Non-blocking: if Gemini answers in time, the phone starts using its lines.
+		task.spawn(function()
+			local reply = ctx.request("PhoneTaunts")
+			if alive and type(reply) == "table" and type(reply.taunts) == "table" and #reply.taunts > 0 then
+				geminiTaunts = reply.taunts
+			end
+		end)
+		if not alive then return end
 		started = true
 		startTime = os.clock()
 	end)
@@ -428,16 +453,20 @@ function Rush.start(ctx)
 	local controller = {}
 	controller.secondsLeft = secondsLeft
 	function controller.goToBed()
-		finish("bed")
+		if started and not finished then finish("bed") end
 	end
 	function controller.stop()
 		alive = false
 		finished = true
 		for _, connection in connections do connection:Disconnect() end
+		bulb:Destroy()
 		folder:Destroy()
-		gui:Destroy()
+		presentation.stop()
 		local human = humanoid()
 		if human then human.CameraOffset = Vector3.zero end
+		if restingHuman and restingHuman.Parent then
+			restingHuman.WalkSpeed=oldWalkSpeed; restingHuman.AutoRotate=oldAutoRotate
+		end
 	end
 	return controller
 end

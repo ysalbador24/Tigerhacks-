@@ -9,7 +9,7 @@ Bedtime choices now change a playable dream. After sleeping, the player crosses 
 - A **3-2-1 countdown**, then a timer bar counts down to 11:00 PM lights out.
 - **Catch your runaway phone.** It floats around the room taunting you ("ur streak is dying") and flees when you get close. After 30 seconds its battery runs low and it slows down. Catch it → Phone docked (healthy). Don't → you scrolled.
 - **Smack the big light.** Touch the floating bulb to dim the room. Your roommate may turn it back on once, so you have to find it again.
-- **Dodge the midnight pizza.** Slices fly in from the walls, aimed at you, and speed up over time. Get hit once → late heavy meal.
+- **Shut the midnight fridge.** A mini-fridge next to the sideboard creaks open, glows, and whispers about leftovers. Walk up to it to shut it. It reopens later in the round (up to 3 times). Open at lights-out → late-night snack.
 - **Get to bed.** Use a bed prompt to end the round early; time left adds a bonus. If the timer runs out, you pass out on the floor.
 
 Healthy habits take effort; unhealthy ones happen by default. Anything left undone counts as: phone kept, big light on, no late meal. The optional room activities (shower, reading…) still work, but they use up the clock.
@@ -52,8 +52,8 @@ To enable Gemini:
 ## Test checklist (Studio)
 
 1. Rojo sync → Play → START.
-2. A 3-2-1 countdown starts Bedtime Rush. Try catching the phone, smacking the bulb, and dodging pizza.
-3. For the chaotic dream: ignore the phone and the light, stand in the way of a pizza, then use the bed. You should get The Algorithm chasing you, notification cards, flickering and drifting tiles, slower walking, and distracted sheep with speech bubbles.
+2. A 3-2-1 countdown starts Bedtime Rush. Try catching the phone, smacking the bulb, and shutting the fridge.
+3. For the chaotic dream: ignore the phone, the light, and the fridge, then use the bed. You should get The Algorithm chasing you, notification cards, flickering and drifting tiles, slower walking, and distracted sheep with speech bubbles.
 4. Fall off once: you respawn at the last checkpoint and Stumbles goes up.
 5. Reach the sunrise → morning screen → **Play another evening**.
 6. Replay with all good options: a calm night, stars, a still path, all 10 sheep countable, and a higher Dream Stability.

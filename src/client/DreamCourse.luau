@@ -24,6 +24,7 @@ local notificationTexts = {
 	"Rate your last 900 videos", "Screen time: 11 hrs (up 40%)", "Reply to Sam from Tuesday",
 }
 local algorithmTaunts = {
+	"I saw you scrolling at 11:59", "Recommended for you: more of me",
 	"Just one more video!", "You up?", "Sleep is for people without Wi-Fi",
 	"Autoplay in 3... 2... 1...", "Don't go! I have 47 more reels", "Your screen time is my love language",
 }
@@ -101,6 +102,19 @@ function DreamCourse.build(config, callbacks)
 	signText.TextScaled = true
 	signText.Parent = sign
 
+	-- Good routine = an easy dream: soft cloud bridges fill every gap, so no jumps are needed.
+	local severity = config.severity or 0
+	if severity == 0 then
+		for index = 1, #Dream.platforms - 1 do
+			local a, b = Dream.platforms[index], Dream.platforms[index + 1]
+			local from = Dream.world(a[2] + Vector3.new(0, a[1].Y / 2 - 0.5, -a[1].Z / 2))
+			local to = Dream.world(b[2] + Vector3.new(0, b[1].Y / 2 - 0.5, b[1].Z / 2))
+			local bridge = part("CloudBridge", Vector3.new(6, 1, (to - from).Magnitude + 2), (from + to) / 2, Color3.fromRGB(225, 215, 255))
+			bridge.CFrame = CFrame.lookAt((from + to) / 2, to)
+			bridge.Transparency = 0.2
+		end
+	end
+
 	-- Calm dreams get drifting stars; they never collide.
 	if not flags.Flicker then
 		local random = Random.new(7)
@@ -115,7 +129,7 @@ function DreamCourse.build(config, callbacks)
 	-- Late heavy meal: tiles drift up and down.
 	if flags.Heavy then
 		for index, tile in tiles do
-			local tween = TweenService:Create(tile, TweenInfo.new(1.8 + (index % 3) * 0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true, (index % 4) * 0.4), {Position = tile.Position + Vector3.new(0, 2.5, 0)})
+			local tween = TweenService:Create(tile, TweenInfo.new(1.8 + (index % 3) * 0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true, (index % 4) * 0.4), {Position = tile.Position + Vector3.new(0, 1.6, 0)})
 			tween:Play()
 			table.insert(tweens, tween)
 		end
@@ -127,7 +141,7 @@ function DreamCourse.build(config, callbacks)
 			task.spawn(function()
 				task.wait((index % 3) * 1.4)
 				while alive do
-					task.wait(3)
+					task.wait(4) -- solid long enough to cross comfortably
 					for _ = 1, 4 do
 						if not alive then return end
 						tile.Transparency = 0.5
@@ -137,7 +151,7 @@ function DreamCourse.build(config, callbacks)
 					end
 					tile.Transparency = 0.85
 					tile.CanCollide = false
-					task.wait(1.2)
+					task.wait(0.9)
 					tile.Transparency = 0
 					tile.CanCollide = true
 				end
@@ -192,6 +206,72 @@ function DreamCourse.build(config, callbacks)
 		corner.CornerRadius = UDim.new(0, 12)
 		corner.Parent = label
 		return label
+	end
+
+	-- Big centered title card for dream moments (destroyed with the course).
+	local announceGui = Instance.new("ScreenGui")
+	announceGui.Name = "DreamAnnouncement"
+	announceGui.ResetOnSpawn = false
+	announceGui.DisplayOrder = 12
+	announceGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+	local announceTitle = Instance.new("TextLabel")
+	announceTitle.AnchorPoint = Vector2.new(0.5, 0.5)
+	announceTitle.Position = UDim2.fromScale(0.5, 0.36)
+	announceTitle.Size = UDim2.fromScale(0.8, 0.12)
+	announceTitle.BackgroundTransparency = 1
+	announceTitle.Font = Enum.Font.FredokaOne
+	announceTitle.TextScaled = true
+	announceTitle.TextColor3 = Color3.fromRGB(255, 120, 150)
+	announceTitle.TextStrokeColor3 = Color3.fromRGB(20, 16, 30)
+	announceTitle.TextStrokeTransparency = 0.2
+	announceTitle.TextTransparency = 1
+	announceTitle.Parent = announceGui
+	local announceSub = announceTitle:Clone()
+	announceSub.Position = UDim2.fromScale(0.5, 0.45)
+	announceSub.Size = UDim2.fromScale(0.6, 0.05)
+	announceSub.Font = Enum.Font.GothamBold
+	announceSub.TextColor3 = Color3.fromRGB(247, 233, 212)
+	announceSub.Parent = announceGui
+	local titleScale = Instance.new("UIScale")
+	titleScale.Parent = announceTitle
+	local announceId = 0
+	local function announce(title, sub, color, hold)
+		announceId += 1
+		local id = announceId
+		announceTitle.Text = title
+		announceTitle.TextColor3 = color or announceTitle.TextColor3
+		announceSub.Text = sub or ""
+		announceTitle.TextTransparency = 0
+		announceSub.TextTransparency = 0
+		titleScale.Scale = 1.6
+		TweenService:Create(titleScale, TweenInfo.new(0.35, Enum.EasingStyle.Back), {Scale = 1}):Play()
+		task.delay(hold or 2.2, function()
+			if id == announceId and announceGui.Parent then
+				TweenService:Create(announceTitle, TweenInfo.new(0.4), {TextTransparency = 1}):Play()
+				TweenService:Create(announceSub, TweenInfo.new(0.4), {TextTransparency = 1}):Play()
+			end
+		end)
+	end
+	local function sound(id, volume, pitch)
+		local s = Instance.new("Sound")
+		s.SoundId = id
+		s.Volume = volume or 0.5
+		s.PlaybackSpeed = pitch or 1
+		s.Parent = announceGui
+		s:Play()
+		task.delay(3, function() s:Destroy() end)
+	end
+	local function shakeCamera(strength, times)
+		local character = Players.LocalPlayer.Character
+		local human = character and character:FindFirstChildOfClass("Humanoid")
+		if not human then return end
+		task.spawn(function()
+			for _ = 1, times do
+				human.CameraOffset = Vector3.new(math.random(-10, 10) / 10 * strength, math.random(-10, 10) / 10 * strength, 0)
+				task.wait(0.03)
+			end
+			human.CameraOffset = Vector3.zero
+		end)
 	end
 
 	-- Counting sheep: walk up to a sheep to count it. Distracted sheep can't be counted.
@@ -255,7 +335,13 @@ function DreamCourse.build(config, callbacks)
 			pupil.CanTouch = false
 			table.insert(eyes, {eye = eye, pupil = pupil, x = x})
 		end
-		algorithm = {screen = screen, eyes = eyes, taunt = bubble(screen, algorithmTaunts[1], 8.5), tauntIndex = 1, nextTaunt = 3, frozenUntil = 0, startAt = 4}
+		algorithm = {screen = screen, eyes = eyes, taunt = bubble(screen, algorithmTaunts[1], 8.5), tauntIndex = 1, nextTaunt = 3, frozenUntil = 0, startAt = 4, mode = "waiting", modeAt = 0}
+		-- Hidden until its entrance.
+		screen.Transparency = 1
+		for _, e in eyes do e.eye.Transparency = 1; e.pupil.Transparency = 1 end
+		display.Enabled = false
+		algorithm.taunt.Parent.Enabled = false
+		algorithm.display = display
 	end
 	local saved = {
 		ClockTime = Lighting.ClockTime, Brightness = Lighting.Brightness, Ambient = Lighting.Ambient,
@@ -299,7 +385,8 @@ function DreamCourse.build(config, callbacks)
 		return player.Character and player.Character:FindFirstChildOfClass("Humanoid")
 	end
 	local savedSpeed = humanoid() and humanoid().WalkSpeed or 16
-	local baseSpeed = if flags.Heavy then 12 else savedSpeed
+	-- Well-rested legs are quick; a heavy meal slows you a little (not a lot).
+	local baseSpeed = if flags.Heavy then 13.5 elseif severity == 0 then math.max(savedSpeed, 19) else savedSpeed
 	if humanoid() then humanoid().WalkSpeed = baseSpeed end
 
 	-- Per-frame: move cards, check knockback, check the goal.
@@ -313,11 +400,11 @@ function DreamCourse.build(config, callbacks)
 		for _, card in cards do
 			local x = math.sin(clock * card.speed + card.phase) * 8
 			card.part.Position = card.center + Vector3.new(x, 4, 0)
-			if root and clock - lastBuzz > 1 then
+			if root and clock - lastBuzz > 1.5 then
 				local delta = root.Position - card.part.Position
 				if math.abs(delta.X) < 4.5 and math.abs(delta.Y) < 4.5 and math.abs(delta.Z) < 2.5 then
 					lastBuzz = clock
-					root.AssemblyLinearVelocity = Vector3.new(0, 30, 32)
+					root.AssemblyLinearVelocity = Vector3.new(0, 16, 12) -- a nudge, not a launch
 					if callbacks.onBuzz then callbacks.onBuzz("Bzzt! A notification pulled you back.") end
 				end
 			end
@@ -332,22 +419,75 @@ function DreamCourse.build(config, callbacks)
 					sheep.counted = true
 					counted += 1
 					if callbacks.onSheep then callbacks.onSheep(counted, sheep.info.name) end
+					-- Reward: the sheep springs up and poofs, with a floating "+1".
+					sound("rbxasset://sounds/electronicpingshort.wav", 0.35, 1 + counted * 0.06)
+					local pop = Instance.new("BillboardGui")
+					pop.Size = UDim2.fromOffset(200, 50)
+					pop.AlwaysOnTop = true
+					pop.StudsOffset = Vector3.new(0, 3, 0)
+					pop.Adornee = sheep.pieces[1][1]
+					pop.Parent = announceGui
+					local popText = Instance.new("TextLabel")
+					popText.Size = UDim2.fromScale(1, 1)
+					popText.BackgroundTransparency = 1
+					popText.Text = "+1 🐑 " .. sheep.info.name
+					popText.TextScaled = true
+					popText.Font = Enum.Font.FredokaOne
+					popText.TextColor3 = Color3.fromRGB(255, 244, 200)
+					popText.TextStrokeTransparency = 0.2
+					popText.Parent = pop
+					TweenService:Create(pop, TweenInfo.new(1), {StudsOffset = Vector3.new(0, 7, 0)}):Play()
+					TweenService:Create(popText, TweenInfo.new(1), {TextTransparency = 1, TextStrokeTransparency = 1}):Play()
+					for _, piece in sheep.pieces do
+						TweenService:Create(piece[1], TweenInfo.new(0.5, Enum.EasingStyle.Back), {CFrame = piece[1].CFrame * CFrame.new(0, 5, 0) * CFrame.Angles(0, math.pi, 0), Transparency = 1}):Play()
+					end
 					local model = sheep.model
-					task.delay(0.6, function() model:Destroy() end)
+					task.delay(1.1, function() model:Destroy(); pop:Destroy() end)
 					sheep.pieces = {}
+					if counted == (config.sheepCountable or -1) then
+						announce("EVERY SHEEP COUNTED", "you are extremely sleepy. congratulations.", Color3.fromRGB(190, 230, 190), 1.8)
+					end
 				end
 			end
 		end
 		-- The Algorithm drifts toward you; if it catches you, you're stuck watching a video.
 		if algorithm and root and clock > algorithm.startAt then
 			local screen = algorithm.screen
-			local target = root.Position + Vector3.new(0, 5, 0)
+			-- Entrance: rise up in front of the player, then swoop overhead, then chase.
+			if algorithm.mode == "waiting" then
+				algorithm.mode = "entrance"
+				algorithm.modeAt = clock
+				algorithm.stage = root.Position + Vector3.new(0, 7, -24)
+				screen.Position = algorithm.stage - Vector3.new(0, 30, 0)
+				screen.Transparency = 0
+				for _, e in algorithm.eyes do e.eye.Transparency = 0; e.pupil.Transparency = 0 end
+				algorithm.display.Enabled = true
+				algorithm.taunt.Parent.Enabled = true
+				algorithm.taunt.Text = "oh hi :)"
+				announce("THE ALGORITHM HAS FOLLOWED YOU", "it saw you scrolling before bed.", Color3.fromRGB(255, 120, 150), 2.4)
+				sound("rbxasset://sounds/electronicpingshort.wav", 0.8, 0.6)
+				shakeCamera(0.35, 10)
+			elseif algorithm.mode == "entrance" and clock - algorithm.modeAt > 2.4 then
+				algorithm.mode = "swoop"
+				algorithm.modeAt = clock
+				algorithm.taunt.Text = "wait for meeee"
+			elseif algorithm.mode == "swoop" and (clock - algorithm.modeAt > 1.6) then
+				algorithm.mode = "chase"
+			end
+			local target = if algorithm.mode == "entrance" then algorithm.stage
+				elseif algorithm.mode == "swoop" then root.Position + Vector3.new(0, 10, 22)
+				else root.Position + Vector3.new(0, 5, 0)
+			local speed = if algorithm.mode == "entrance" then 30 elseif algorithm.mode == "swoop" then 40 else 6.5
 			local toTarget = target - screen.Position
-			local distance = toTarget.Magnitude
+			local distance = if algorithm.mode == "chase" then toTarget.Magnitude else math.huge
 			local position = screen.Position
-			if distance > 0.1 then position += toTarget.Unit * math.min(distance, 9 * dt) end
+			if toTarget.Magnitude > 0.1 then position += toTarget.Unit * math.min(toTarget.Magnitude, speed * dt) end
 			position += Vector3.new(0, math.sin(clock * 2) * 0.03, 0)
-			screen.CFrame = CFrame.lookAt(position, Vector3.new(root.Position.X, position.Y, root.Position.Z))
+			-- Direct vertical alignment has no horizontal facing direction. Avoid a
+			-- degenerate lookAt CFrame, which can send the phone outside the level.
+			local facing = Vector3.new(root.Position.X - position.X, 0, root.Position.Z - position.Z)
+			if facing.Magnitude < 0.01 then facing = Vector3.new(0, 0, 1) end
+			screen.CFrame = CFrame.lookAt(position, position + facing)
 			for _, eye in algorithm.eyes do
 				eye.eye.CFrame = screen.CFrame * CFrame.new(eye.x, 3.5, -0.9)
 				local wobble = Vector3.new(math.sin(clock * 7 + eye.x) * 0.4, math.cos(clock * 5 + eye.x) * 0.4, -0.9)
@@ -360,7 +500,9 @@ function DreamCourse.build(config, callbacks)
 			end
 			local human = humanoid()
 			if distance < 6 and clock > algorithm.frozenUntil + 2 and human then
-				algorithm.frozenUntil = clock + 2
+				algorithm.frozenUntil = clock + 0.8
+				sound("rbxasset://sounds/electronicpingshort.wav", 0.6, 0.8)
+				shakeCamera(0.25, 6)
 				algorithm.taunt.Text = "Caught you! Enjoy this 45-minute video essay."
 				algorithm.nextTaunt = clock + 3
 				human.WalkSpeed = 0
@@ -389,6 +531,7 @@ function DreamCourse.build(config, callbacks)
 		if not alive then return end
 		alive = false
 		for _, connection in connections do connection:Disconnect() end
+		announceGui:Destroy()
 		for _, tween in tweens do tween:Cancel() end
 		for _, effect in effects do effect:Destroy() end
 		for property, value in saved do Lighting[property] = value end

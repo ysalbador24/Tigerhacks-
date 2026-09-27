@@ -109,6 +109,7 @@ local fadeGui=Instance.new("ScreenGui"); fadeGui.Name="DreamFade"; fadeGui.Ignor
 local overlay=Instance.new("TextLabel"); overlay.Size=UDim2.fromScale(1,1); overlay.BackgroundColor3=Color3.fromRGB(12,12,28); overlay.BackgroundTransparency=1
 overlay.TextTransparency=1; overlay.Text="Falling asleep..."; overlay.TextColor3=cream; overlay.Font=Enum.Font.GothamBold; overlay.TextSize=32; overlay.ZIndex=10; overlay.Parent=fadeGui
 local demo=false
+local rushMode=false -- Bedtime Rush arcade evening (server's BedtimeRush attribute)
 local function isEssential(key) return table.find(Dream.essentials,key)~=nil end
 local activities = {
 	{"Curtains","The world outside can wait.","Close the curtains","Leave them open",Vector3.new(-99,22.4,-185)},
@@ -145,6 +146,8 @@ local completed=false
 local startedAt=0
 local remote -- assigned below after intro
 local runDream
+local choose
+local morningReport
 local rush -- the active Bedtime Rush round, if any
 local sleepNow, startRush
 local function request(key,option)
@@ -176,9 +179,9 @@ local function pace(seconds) return if demo then math.max(3,math.floor(seconds*0
 local function show(key)
 	if busy or completed then return end
 	-- Bedtime Rush plays the key habits as objectives, not dialogs.
-	if demo and isEssential(key) then return end
+	if rushMode and isEssential(key) then return end
 	-- In Bedtime Rush the bed ends the round immediately.
-	if key=="Sleep" and demo then
+	if key=="Sleep" and rushMode then
 		if rush then rush.goToBed() else sleepNow() end
 		return
 	end
@@ -257,6 +260,14 @@ end
 local function showMorning(result)
 	TweenService:Create(Lighting,TweenInfo.new(3),{ClockTime=7.2,Brightness=2,Ambient=Color3.fromRGB(150,140,130)}):Play()
 	updateMood(result.wellbeing)
+	if demo then
+		dialog.Visible=false; hud.Visible=false; moodPanel.Visible=false; feedbackPanel.Visible=false
+		if morningReport then morningReport.stop() end
+		morningReport=require(script.Parent.RushResults).show(player,result,function()
+			current="Replay"; choose(1)
+		end)
+		return
+	end
 	layout(true)
 	dialog.Visible=true; hud.Visible=true; feedbackPanel.Visible=true
 	moodPanel.Visible=true
@@ -326,13 +337,14 @@ function runDream(config)
 	showMorning(result)
 	fade(false)
 end
-local function choose(option)
+choose = function(option)
 	if busy then return end
 	busy=true
 	local key=current
 	local result=request(key,option)
 	if not result then story.Text="Could not save that choice. Please try again."; busy=false; return end
 	if key=="Replay" and result.replay then
+		if morningReport then morningReport.stop(); morningReport=nil end
 		layout(false)
 		lastWellbeing=nil; updateMood(result.wellbeing,"A fresh evening begins.")
 		answers={}; completed=false; startedAt=os.clock(); Lighting.ClockTime=18.5
@@ -341,7 +353,7 @@ local function choose(option)
 		apply("Phone",1); apply("Notifications",2); apply("Temperature",2); apply("Food",2); apply("Lighting",2)
 		for _,p in prompts do p.Enabled=true end
 		refresh(); dialog.Visible=false
-		if demo then startRush() end
+		if rushMode then startRush() else hud.Visible=true; moodPanel.Visible=true; feedbackPanel.Visible=true end
 	elseif key=="Sleep" then
 		if result.message then story.Text=result.message
 		elseif result.dream then runDream(result.dream) end
@@ -387,11 +399,14 @@ repeat task.wait(0.2) until player:GetAttribute("StartedGame") and not player.Pl
 remote=game:GetService("ReplicatedStorage"):WaitForChild("BedtimeChoice",15)
 if not remote then gui:Destroy(); fadeGui:Destroy(); root:Destroy(); return end
 demo=ReplicatedStorage:GetAttribute("DemoMode")==true
-if demo then
+rushMode=ReplicatedStorage:GetAttribute("BedtimeRush")==true
+if rushMode then
 	-- Bedtime Rush plays the key habits as arcade objectives, so drop their dialog prompts.
 	local kept={}
 	for _,p in prompts do if isEssential(p.ObjectText) then p.Parent=nil else table.insert(kept,p) end end
 	prompts=kept
+elseif demo then
+	for _,p in prompts do if isEssential(p.ObjectText) then p.ObjectText=p.ObjectText.." • key choice" end end
 end
 function sleepNow()
 	if busy or completed then return end
@@ -401,7 +416,7 @@ function sleepNow()
 end
 function startRush()
 	if rush then rush.stop() end
-	hud.Visible=false; moodPanel.Visible=false
+	hud.Visible=false; moodPanel.Visible=false; feedbackPanel.Visible=false
 	rush=BedtimeRush.start({
 		request=request,
 		apply=apply,
@@ -452,13 +467,13 @@ refresh()
 gui.Enabled=true; startedAt=os.clock(); Lighting.ClockTime=18.5
 Lighting.Ambient=Color3.fromRGB(110,100,120)
 for _,p in prompts do p.Enabled=true end
-if demo then startRush() end
+if rushMode then startRush() end
 while gui.Parent do
 	if not completed then
 		local elapsed=os.clock()-startedAt
 		local minutes=math.min(60,math.floor(elapsed/5))
 		clock.Text=string.format("%d:%02d PM • %s",10+math.floor(minutes/60),minutes%60,if demo then "Demo: 3 key choices, then bed" elseif elapsed<300 then "Bedtime in "..math.ceil((300-elapsed)/60).." min" else "Ready for bed")
-		Lighting.ClockTime=18.5+3.5*math.min(elapsed/45,1)
+		if not rushMode then Lighting.ClockTime=18.5+3.5*math.min(elapsed/45,1) end
 	end
 	task.wait(1)
 end
