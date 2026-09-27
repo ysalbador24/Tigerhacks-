@@ -65,7 +65,7 @@ local effects = {
 		{flag = "Flicker", line = "Bright light: the dream glares, platforms blink out, and 3 sheep need sunglasses."},
 	},
 	Food = {
-		{flag = nil, line = "Finished eating: the path holds still."},
+		{flag = nil, line = "Lighter food choice: the path holds still."},
 		{flag = "Heavy", line = "Late heavy meal: you're sluggish, the path won't sit still, and 3 sheep are in a food coma."},
 	},
 }
@@ -158,6 +158,22 @@ function Dream.configure(answers, readiness)
 		config.flags.ExtraNotifications = true
 		table.insert(config.lines, "Notifications on: even more pings interrupt the dream.")
 	end
+	-- Describe only explicitly recorded choices, never the fallback effect values.
+	local details={}
+	for _,entry in {
+		{"WindDown", "read a book", "scrolled on your phone"},
+		{"Lighting", "dimmed the lights", "kept the main light on"},
+		{"Food", "chose cherries", "chose a slice of pizza"},
+		{"TV", "turned off the TV", "watched another episode"},
+	} do
+		local choice=answers[entry[1]]
+		if choice==1 or choice==2 then table.insert(details,entry[choice+1]) end
+		if #details==2 then break end
+	end
+	local mood=if config.severity>0 then "the path might feel a little trickier tonight" else "things feel a little calmer tonight"
+	config.introduction=if #details>0 then "You "..table.concat(details," and ").."; "..mood.."."
+		elseif config.severity>0 then "It's been a busy night; the path might feel a little trickier."
+		else "Your evening is over; a new dream is beginning."
 	return config
 end
 

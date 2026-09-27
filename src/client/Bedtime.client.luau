@@ -6,7 +6,10 @@ local Dream = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Dre
 local DreamCourse = require(script.Parent:WaitForChild("DreamCourse"))
 local WindDownAction = require(script.Parent:WaitForChild("WindDownAction"))
 local TVAction = require(script.Parent:WaitForChild("TVAction"))
+local FoodAction = require(script.Parent:WaitForChild("FoodAction"))
+local GoToBed = require(script.Parent:WaitForChild("GoToBed"))
 local ShowerInteraction = require(script.Parent:WaitForChild("ShowerInteraction"))
+local TemperatureInteraction = require(script.Parent:WaitForChild("TemperatureInteraction"))
 local ReadingInteraction = require(script.Parent:WaitForChild("ReadingInteraction"))
 local BedtimeRush = require(script.Parent:WaitForChild("BedtimeRush"))
 local player = Players.LocalPlayer
@@ -26,7 +29,7 @@ local function label(parent, text, pos, size)
 end
 local function panel(pos, size)
 	local f = Instance.new("Frame")
-	f.Position = pos; f.Size = size; f.BackgroundColor3 = ink; f.BackgroundTransparency = 0.08; f.Parent = gui
+	f.Position = pos; f.Size = size; f.BackgroundColor3 = Color3.fromRGB(28,30,49); f.BackgroundTransparency = 0.08; f.Parent = gui
 	local corner = Instance.new("UICorner"); corner.CornerRadius = UDim.new(0,16); corner.Parent = f
 	return f
 end
@@ -52,7 +55,7 @@ local objectiveHeading=label(objective,"A little time to unwind",UDim2.new(0,16,
 objectiveHeading.Name="Heading"; objectiveHeading.Font=Enum.Font.FredokaOne; objectiveHeading.TextColor3=ink; objectiveHeading.TextSize=20; objectiveHeading.TextXAlignment=Enum.TextXAlignment.Left
 local objectiveDecoration=label(objective,"zzz",UDim2.new(1,-52,0,9),UDim2.fromOffset(36,26))
 objectiveDecoration.Font=Enum.Font.FredokaOne; objectiveDecoration.TextColor3=Color3.fromRGB(146,99,64); objectiveDecoration.Rotation=-10
-local objectiveDeadline=label(objective,"Until 11 PM · get ready for bed",UDim2.new(0,16,0,42),UDim2.new(1,-32,0,24))
+local objectiveDeadline=label(objective,"Get ready for bed by 11:00 PM",UDim2.new(0,16,0,42),UDim2.new(1,-32,0,24))
 objectiveDeadline.Name="Deadline"; objectiveDeadline.BackgroundTransparency=0; objectiveDeadline.BackgroundColor3=Color3.fromRGB(230,174,137); objectiveDeadline.TextColor3=ink; objectiveDeadline.Font=Enum.Font.GothamBold; objectiveDeadline.TextSize=13
 local deadlineCorner=Instance.new("UICorner"); deadlineCorner.CornerRadius=UDim.new(0,8); deadlineCorner.Parent=objectiveDeadline
 local objectiveText=label(objective,"Try activities around the room, or go to bed early.",UDim2.new(0,16,0,73),UDim2.new(1,-32,0,40))
@@ -104,12 +107,26 @@ local function button(text, y)
 	return b
 end
 local first, second, close = button("",0.56),button("",0.73),button("Back to the room",0.9)
+local dndSwitch=button("",0.6); dndSwitch.Name="DoNotDisturbSwitch"; dndSwitch.Visible=false
+local dndText=label(dndSwitch,"Do Not Disturb · Off",UDim2.fromScale(0.04,0),UDim2.new(1,-110,1,0))
+dndText.TextColor3=ink; dndText.TextSize=17; dndText.TextXAlignment=Enum.TextXAlignment.Left
+local dndTrack=Instance.new("Frame"); dndTrack.AnchorPoint=Vector2.new(1,0.5); dndTrack.Position=UDim2.new(1,-14,0.5,0); dndTrack.Size=UDim2.fromOffset(58,30); dndTrack.Parent=dndSwitch
+Instance.new("UICorner",dndTrack).CornerRadius=UDim.new(1,0)
+local dndKnob=Instance.new("Frame"); dndKnob.Size=UDim2.fromOffset(24,24); dndKnob.BackgroundColor3=cream; dndKnob.BorderSizePixel=0; dndKnob.Parent=dndTrack
+Instance.new("UICorner",dndKnob).CornerRadius=UDim.new(1,0)
+local cherriesPreview=FoodAction.preview(first,1)
+local pizzaPreview=FoodAction.preview(second,2)
+cherriesPreview.Visible=false; pizzaPreview.Visible=false
 close.Size=UDim2.fromScale(0.86,0.08)
 story.TextYAlignment=Enum.TextYAlignment.Top
 local function capText(object,max) local c=Instance.new("UITextSizeConstraint"); c.MaxTextSize=max; c.MinTextSize=9; c.Parent=object end
 capText(story,17)
 -- The morning screen needs more room than a single choice.
 local function layout(morning)
+	dndSwitch.Visible=false
+	title.Font=if morning then Enum.Font.Arcade else Enum.Font.GothamBold
+	first.Font=if morning then Enum.Font.GothamBold else Enum.Font.Gotham
+	cherriesPreview.Visible=false; pizzaPreview.Visible=false
 	dialog.Position=if morning then UDim2.fromScale(0.15,0.06) else UDim2.fromScale(0.2,0.32)
 	dialog.Size=if morning then UDim2.fromScale(0.7,0.86) else UDim2.fromScale(0.6,0.57)
 	title.Size=if morning then UDim2.fromScale(0.9,0.08) else UDim2.fromScale(0.9,0.13)
@@ -121,16 +138,21 @@ local function layout(morning)
 	first.Size=if morning then UDim2.fromScale(0.86,0.1) else UDim2.fromScale(0.86,0.14)
 end
 -- Dream HUD: what tonight's choices changed, plus stumbles and a safety wake button.
-local dreamPanel=panel(UDim2.fromScale(0.02,0.03),UDim2.fromScale(0.36,0.3))
+local dreamPanel=panel(UDim2.fromScale(0.02,0.03),UDim2.new(0.38,0,0,254))
 dreamPanel.Name="DreamPanel"; dreamPanel.Visible=false
-local dreamTitle=label(dreamPanel,"The Dream • Reach the morning light",UDim2.fromScale(0.05,0.03),UDim2.fromScale(0.9,0.14))
+local dreamSize=Instance.new("UISizeConstraint",dreamPanel); dreamSize.MinSize=Vector2.new(300,254); dreamSize.MaxSize=Vector2.new(460,254)
+local function dreamLabel(text,y,height,maxSize)
+	local t=label(dreamPanel,text,UDim2.new(0,16,0,y),UDim2.new(1,-32,0,height))
+	t.TextXAlignment=Enum.TextXAlignment.Left; t.TextYAlignment=Enum.TextYAlignment.Center
+	t.TextScaled=true; capText(t,maxSize); return t
+end
+local dreamTitle=dreamLabel("The Dream · Find the morning light",10,32,18)
 dreamTitle.Font=Enum.Font.GothamBold
-local dreamLines=label(dreamPanel,"",UDim2.fromScale(0.05,0.18),UDim2.fromScale(0.9,0.52)); dreamLines.TextSize=15
-dreamLines.TextXAlignment=Enum.TextXAlignment.Left; dreamLines.TextYAlignment=Enum.TextYAlignment.Top
-dreamLines.TextScaled=true; capText(dreamLines,15)
-local dreamStatus=label(dreamPanel,"Stumbles: 0",UDim2.fromScale(0.05,0.72),UDim2.fromScale(0.55,0.22)); dreamStatus.TextSize=15
-dreamStatus.TextXAlignment=Enum.TextXAlignment.Left
-local wakeButton=Instance.new("TextButton"); wakeButton.Text="Wake up now"; wakeButton.Position=UDim2.fromScale(0.62,0.74); wakeButton.Size=UDim2.fromScale(0.33,0.2)
+local dreamLines=dreamLabel("",45,50,15)
+local dreamInstruction=dreamLabel("",99,42,15)
+local dreamStatus=dreamLabel("Sheep: 0/10 · Stumbles: 0",145,24,15)
+local dreamMessage=dreamLabel("",172,30,14)
+local wakeButton=Instance.new("TextButton"); wakeButton.Text="Wake up now"; wakeButton.Position=UDim2.new(1,-140,0,211); wakeButton.Size=UDim2.fromOffset(124,30)
 wakeButton.BackgroundColor3=Color3.fromRGB(183,203,190); wakeButton.TextColor3=ink; wakeButton.Font=Enum.Font.Gotham; wakeButton.TextSize=14; wakeButton.Visible=false; wakeButton.Parent=dreamPanel
 local wakeCorner=Instance.new("UICorner"); wakeCorner.CornerRadius=UDim.new(0,8); wakeCorner.Parent=wakeButton
 local fadeGui=Instance.new("ScreenGui"); fadeGui.Name="DreamFade"; fadeGui.IgnoreGuiInset=true; fadeGui.DisplayOrder=20; fadeGui.ResetOnSpawn=false; fadeGui.Parent=gui.Parent
@@ -145,11 +167,17 @@ local layoutAnchors=bedroom:WaitForChild("LayoutAnchors")
 local bedSleepTarget=layoutAnchors:WaitForChild("BedSleepTarget")
 local phoneDeskAnchor=layoutAnchors:WaitForChild("PhoneDeskAnchor")
 local phoneBedAnchor=layoutAnchors:WaitForChild("PhoneBedAnchor")
+local bedsideTop=bedroom:WaitForChild("CottageExpansion"):WaitForChild("ReadingLoft"):WaitForChild("BedsideTable"):WaitForChild("Tabletop")
+local bedsidePhoneCFrame=bedsideTop.CFrame*CFrame.new(0,bedsideTop.Size.Y/2+0.09,-0.84)*CFrame.Angles(0,math.pi/2,0)
 local libraryAnchor=layoutAnchors:WaitForChild("LibraryInteractionAnchor")
+local kitchenette=bedroom:WaitForChild("Kitchenette")
+local fridgeDoor=kitchenette:WaitForChild("FridgeDoor")
+local foodAnchor=fridgeDoor:WaitForChild("FoodInteractionAnchor")
+local foodPlateAnchor=kitchenette:WaitForChild("CounterOrigin"):WaitForChild("FoodPlateAnchor")
 local activities = {
 	{"Curtains","The world outside can wait.","Close the curtains","Leave them open",Vector3.new(-99,22.4,-185)},
 	{"Lighting","Lowering the lights helps your body wind down for sleep.","Turn off the main light","Keep the main light on",Vector3.new(-95,17.4,-134.5)},
-	{"Food","Dinner is over. What feels right for the end of your evening?","Finish eating for tonight","Have a late heavy meal",Vector3.new(-62,19,-157)},
+	{"Food","A lighter snack may feel more comfortable close to bedtime. What sounds good?","Small bowl of cherries · lighter snack","Slice of pizza · heavier meal",foodAnchor.WorldPosition},
 	{"Notifications","The group chat is still buzzing. You can catch up tomorrow.","Turn on Do Not Disturb","Keep notifications on",phoneDeskAnchor.Position+Vector3.new(2,1,0)},
 	{"Temperature","Settle into a room that feels comfortably cool to you.","Make the room comfortably cool","Keep the room warm",Vector3.new(-109,21,-149)},
 	{"Shower","Warm water, a soft towel, and a quiet moment to reset.","Take a warm shower","Skip showering",Vector3.new(-128,17,-145)},
@@ -165,19 +193,27 @@ local curtains={}
 local expansion
 local candleOn=true
 local tvOn=false
-local phone=part("BedtimePhone",Vector3.new(1.2,0.18,2),phoneBedAnchor.Position,ink)
-phone.CFrame=phoneBedAnchor.CFrame
+local phone=part("BedtimePhone",Vector3.new(0.75,0.18,1.6),bedsidePhoneCFrame.Position,ink)
+phone.CFrame=bedsidePhoneCFrame
 local phoneScreen=Instance.new("SurfaceGui"); phoneScreen.Name="PhoneScreen"; phoneScreen.Face=Enum.NormalId.Top
 phoneScreen.CanvasSize=Vector2.new(180,300); phoneScreen.Parent=phone
 local phoneDisplay=Instance.new("TextLabel"); phoneDisplay.Size=UDim2.fromScale(0.86,0.88); phoneDisplay.Position=UDim2.fromScale(0.07,0.06)
 phoneDisplay.BackgroundColor3=Color3.fromRGB(71,88,108); phoneDisplay.Text="Phone\n• • •"; phoneDisplay.TextColor3=cream
 phoneDisplay.Font=Enum.Font.Gotham; phoneDisplay.TextScaled=true; phoneDisplay.Parent=phoneScreen
 Instance.new("UICorner",phoneDisplay).CornerRadius=UDim.new(0,16)
-local plate=part("EveningPlate",Vector3.new(2.5,0.15,2.5),Vector3.new(-62,17.8,-157),cream)
-local snack=part("LateSnack",Vector3.new(1.6,0.5,1.6),Vector3.new(-62,18.1,-157),Color3.fromRGB(190,126,72))
+local plate=part("EveningPlate",Vector3.new(2.5,0.15,2.5),foodPlateAnchor.WorldPosition,cream)
+local snack=part("LateSnack",Vector3.new(1.6,0.5,1.6),foodPlateAnchor.WorldPosition+Vector3.new(0,0.3,0),Color3.fromRGB(190,126,72))
 local thermostat=part("Thermostat",Vector3.new(0.3,2,2.5),Vector3.new(-109.5,19,-149),cream)
-local temperatureGui=Instance.new("BillboardGui"); temperatureGui.Size=UDim2.fromOffset(140,40); temperatureGui.StudsOffset=Vector3.new(0,2,0); temperatureGui.MaxDistance=20; temperatureGui.Parent=thermostat
-local temperatureText=label(temperatureGui,"72°F • Warm",UDim2.fromScale(0,0),UDim2.fromScale(1,1))
+thermostat.Transparency=1
+local temperatureGui=Instance.new("SurfaceGui"); temperatureGui.Name="ThermostatFace"; temperatureGui.Face=Enum.NormalId.Right
+temperatureGui.CanvasSize=Vector2.new(300,300); temperatureGui.Parent=thermostat
+local device=Instance.new("Frame"); device.Size=UDim2.fromScale(1,1); device.BackgroundColor3=Color3.fromRGB(240,236,224); device.BorderSizePixel=0; device.Parent=temperatureGui
+Instance.new("UICorner",device).CornerRadius=UDim.new(0,30)
+local display=Instance.new("Frame"); display.Position=UDim2.fromScale(0.1,0.12); display.Size=UDim2.fromScale(0.8,0.55); display.BackgroundColor3=Color3.fromRGB(160,174,155); display.BorderSizePixel=0; display.Parent=device
+Instance.new("UICorner",display).CornerRadius=UDim.new(0,15)
+local roomLabel=label(display,"ROOM",UDim2.fromScale(0.08,0.04),UDim2.fromScale(0.5,0.2)); roomLabel.TextColor3=ink; roomLabel.Font=Enum.Font.GothamBold
+local temperatureText=label(display,"72°F",UDim2.fromScale(0.06,0.22),UDim2.fromScale(0.88,0.7)); temperatureText.TextColor3=ink; temperatureText.Font=Enum.Font.Code; temperatureText.TextScaled=true
+local controlHint=label(device,"SET     ▲  ▼",UDim2.fromScale(0.1,0.73),UDim2.fromScale(0.8,0.18)); controlHint.TextColor3=ink; controlHint.Font=Enum.Font.GothamBold
 local prompts={}
 local answers={}
 local current=nil
@@ -199,11 +235,14 @@ local choose
 local morningReport
 local rush -- the active Bedtime Rush round, if any
 local shower
+local temperatureUI
+local chosenTemperature=72
 local reading
 local function stopReading()
 	if reading then reading.stop(); reading=nil end
 end
 local function stopShower()
+	if temperatureUI then temperatureUI.stop(); temperatureUI=nil end
 	if shower then shower.stop(true); shower=nil end
 end
 local sleepNow, startRush
@@ -226,8 +265,24 @@ end
 local function pace(seconds) return if demo then math.max(3,math.floor(seconds*0.25+0.5)) else seconds end
 local function show(key)
 	if busy or completed or eveningClosed or actionRunning then return end
+	dndSwitch.Visible=key=="Notifications"
+	cherriesPreview.Visible=key=="Food"; pizzaPreview.Visible=key=="Food"
 	objective.Visible=false
 	stopShower()
+	if key=="Temperature" then
+		dialog.Visible=false
+		temperatureUI=TemperatureInteraction.open(player,chosenTemperature,function(value)
+			local response=request("Temperature",value)
+			if completed or eveningClosed or not response or not response.accepted then return false end
+			chosenTemperature=response.temperatureF; answers.Temperature=response.option
+			local caption=if chosenTemperature>=65 and chosenTemperature<=68
+				then "Your room was in a comfortable range for sleep."
+				else "Your room was outside the suggested sleep temperature range. Choose what feels comfortable."
+			temperatureText.Text=chosenTemperature.."°F"; refresh(); updateMood(response.wellbeing,caption)
+			return true
+		end)
+		return
+	end
 	if key=="Shower" then
 		if answers.Shower then return end
 		busy=true
@@ -259,6 +314,15 @@ local function show(key)
 		return
 	end
 	current=key; dialog.Visible=true; first.Visible=true; second.Visible=true; close.Visible=key~="Sleep"
+	if key=="Notifications" then
+		local on=answers.Notifications==1
+		title.Text="Phone notifications"; story.Text="Buzzes and notifications can interrupt your sleep. Tap the switch to turn on Do Not Disturb."
+		first.Visible=false; second.Visible=false
+		dndText.Text="Do Not Disturb · "..(if on then "On" else "Off")
+		dndTrack.BackgroundColor3=if on then Color3.fromRGB(112,151,121) else Color3.fromRGB(119,117,130)
+		dndKnob.Position=UDim2.fromOffset(if on then 31 else 3,3)
+		return
+	end
 	if key=="Sleep" then
 		title.Text="Go to sleep at "..eveningTime().."?"; story.Text="Confirm to begin your dream, or return to your evening."; first.Text="Confirm"; second.Text="Cancel"
 	else
@@ -274,21 +338,39 @@ local function prompt(key,pos,object)
 	p:SetAttribute("ActivityKey",key)
 	p.MaxActivationDistance=8; p.RequiresLineOfSight=false; p.HoldDuration=0; p.Enabled=false; p.Parent=anchor
 	local marker=Instance.new("BillboardGui"); marker.Name="ActivityMarker"; marker.Size=UDim2.fromOffset(140,30)
-	marker.StudsOffset=Vector3.new(0,2,0); marker.MaxDistance=18; marker.AlwaysOnTop=false; marker.Enabled=false; marker.Parent=anchor
+	marker.StudsOffset=Vector3.new(0,2,0); marker.MaxDistance=18; marker.AlwaysOnTop=true; marker.Enabled=false; marker.Parent=anchor
 	local markerText=label(marker,"• "..p.ObjectText,UDim2.fromScale(0,0),UDim2.fromScale(1,1))
-	markerText.TextSize=14; markerText.TextStrokeTransparency=0.5; markerText.TextColor3=Color3.fromRGB(244,218,168)
+	markerText.Font=Enum.Font.GothamMedium; markerText.TextSize=14; markerText.TextScaled=false
+	markerText.TextStrokeTransparency=0.8; markerText.TextColor3=Color3.fromRGB(244,218,168)
 	p:GetPropertyChangedSignal("Enabled"):Connect(function() marker.Enabled=p.Enabled end)
 	p.Triggered:Connect(function() show(key) end); table.insert(prompts,p)
+	if key=="Food" or key=="Notifications" then
+		local function openFood()
+			local characterRoot=player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+			if p.Enabled and characterRoot and (characterRoot.Position-anchor.WorldPosition).Magnitude<=p.MaxActivationDistance then show(key) end
+		end
+		local click=Instance.new("ClickDetector"); click.MaxActivationDistance=0; click.Parent=if key=="Food" then fridgeDoor else phone
+		click.MouseClick:Connect(openFood)
+		p:GetPropertyChangedSignal("Enabled"):Connect(function() click.MaxActivationDistance=if p.Enabled then p.MaxActivationDistance else 0 end)
+		-- Interactive billboards must live in PlayerGui; Adornee keeps the same location.
+		marker.Adornee=anchor; marker.Parent=player.PlayerGui; marker.Active=true
+		local button=Instance.new("TextButton"); button.Text=""; button.BackgroundTransparency=1
+		button.Size=UDim2.fromScale(1,1); button.Parent=marker; button.Activated:Connect(openFood)
+	end
 end
 for _,a in activities do
 	if a[1]=="TV" then
 		-- The existing TV remote supplies this activity's only prompt.
+	elseif a[1]=="Food" then
+		prompt(a[1],a[5],foodAnchor)
 	elseif a[1]=="Notifications" then
-		local attachment=Instance.new("Attachment"); attachment.Name="NotificationInteraction"; attachment.Position=Vector3.new(2,0,0); attachment.Parent=phone
+		local attachment=Instance.new("Attachment"); attachment.Name="NotificationInteraction"; attachment.Position=Vector3.zero; attachment.Parent=phone
 		prompt(a[1],a[5],attachment)
 	else prompt(a[1],a[5]) end
 end
-prompt("Sleep",bedSleepTarget.Position)
+local headPillow=bedroom:FindFirstChild("Pillow2")
+local headCushion=headPillow and headPillow:FindFirstChild("Cushion")
+prompt("Sleep",if headCushion then headCushion.Position else bedSleepTarget.Position)
 local roomLights={}
 local function setCurtains(closed)
 	for _,p in curtains do
@@ -419,9 +501,9 @@ local function apply(key,option)
 			if shelf then shelf.UpstairsSwitch.Orientation=Vector3.new(0,0,if good then -15 else 15) end
 		end
 	end
-	if key=="Phone" or key=="WindDown" then phone.CFrame=if good then phoneDeskAnchor.CFrame else phoneBedAnchor.CFrame end
+	if key=="Phone" or key=="WindDown" then phone.CFrame=bedsidePhoneCFrame end
 	if key=="Notifications" then phone.Color=if good then ink else Color3.fromRGB(120,196,232); phoneDisplay.Text=if good then "Phone\nQuiet mode" else "Phone\n• • •" end
-	if key=="Temperature" then temperatureText.Text=if good then "67°F • Cool" else "72°F • Warm"; thermostat.Color=if good then Color3.fromRGB(160,200,220) else cream end
+	if key=="Temperature" then temperatureText.Text=chosenTemperature.."°F"; thermostat.Color=cream end
 	if key=="Food" then snack.Transparency=if good then 1 else 0 end
 	if key=="TV" then if good then setTV(false) else startTVCartoon() end end
 end
@@ -477,11 +559,14 @@ function runDream(config)
 	eveningClosed=true
 	completed=true; for _,p in prompts do p.Enabled=false end
 	dialog.Visible=false; hud.Visible=false; feedbackPanel.Visible=false
+	local restoreBedPose=GoToBed.play(player)
 	fade(true,"Falling asleep...")
+	restoreBedPose()
 	local wakeRequest=nil
 	local stumbles, sheepCount=0,0
 	local function status(extra)
-		dreamStatus.Text="Sheep: "..sheepCount.." / "..(config.sheepCountable or 0).." • Stumbles: "..stumbles..(if extra then "\n"..extra else "")
+		dreamStatus.Text="Sheep: "..sheepCount.."/"..#config.sheep.." · Stumbles: "..stumbles
+		dreamMessage.Text=extra or ""
 	end
 	local course=DreamCourse.build(config,{
 		onGoal=function() wakeRequest="goal" end,
@@ -494,13 +579,13 @@ function runDream(config)
 		hud.Visible=true; feedbackPanel.Visible=true
 		return
 	end
-	local lines={}
-	for _,line in config.lines do table.insert(lines,"• "..line) end
-	dreamLines.Text=table.concat(lines,"\n")
-	dreamLines.Text=dreamLines.Text.."\n• Count the sheep. Walk up to one to count it."
+	dreamLines.Text=config.introduction or "Your evening is over; a new dream is beginning."
+	dreamInstruction.Text=if config.sheepCountable==0 then "Follow the path to the morning light; the sheep are distracted tonight."
+		elseif config.sheepCountable<#config.sheep then "Count the sheep you can along the way, then reach the morning light."
+		else "Count sheep along the way, then reach the morning light."
 	status(); wakeButton.Visible=false; dreamPanel.Visible=true
 	local stumbleConnection=player:GetAttributeChangedSignal("DreamStumbles"):Connect(function()
-		stumbles=player:GetAttribute("DreamStumbles") or 0; status("Whoops. Back to the checkpoint.")
+		stumbles=player:GetAttribute("DreamStumbles") or 0; status("Oops, try again.")
 	end)
 	local wakeConnection=wakeButton.Activated:Connect(function() wakeRequest="early" end)
 	fade(false)
@@ -600,12 +685,12 @@ choose = function(option)
 		layout(false)
 		lastWellbeing=nil; updateMood(result.wellbeing,"A fresh evening begins.")
 		answers={}; completed=false; eveningClosed=false; eveningGeneration+=1
+		chosenTemperature=72
 		local status=request("Status")
 		eveningStarted=if status then status.eveningStarted else nil
 		Lighting.ClockTime=17.4 -- sunset; the evening fades to night (see below)
 		Lighting.Brightness=2; Lighting.Ambient=Color3.fromRGB(110,100,120)
 		setCurtains(false); setCandle(true); setTV(true)
-		Lighting.Brightness=2; apply("Lighting",1)
 		setCurtains(false); setCandle(true); setTV(false)
 		apply("Phone",2); apply("Notifications",2); apply("Temperature",2); apply("Food",2); apply("Lighting",2)
 		for _,p in prompts do p.Enabled=true end
@@ -616,23 +701,110 @@ choose = function(option)
 		elseif result.dream then runDream(result.dream) end
 	elseif result.accepted then
 		answers[key]=option; apply(key,option); refresh(); updateMood(result.wellbeing,result.feedback)
+		if key=="Food" then
+			actionRunning=true; dialog.Visible=false
+			local factStarted=os.clock()
+			local captionPosition,captionSize=feedbackPanel.Position,feedbackPanel.Size
+			if option==1 then
+				feedbackPanel.Position=UDim2.new(0.2,0,1,-116)
+				feedbackPanel.Size=UDim2.new(0.6,0,0,100)
+				feedbackText.Text="Did you know?\nCherries naturally contain melatonin and serotonin, two compounds involved in the body’s sleep cycle."
+			end
+			local ok,err=pcall(FoodAction.play,player,option,function()
+				return completed or eveningClosed or generation~=eveningGeneration or not gui.Parent
+			end)
+			-- Include the eating animation in eight seconds of reading time. The
+			-- clock keeps running; a pending dream waits until this caption ends.
+			if option==1 then
+				while os.clock()-factStarted<8 and gui.Parent and not completed and generation==eveningGeneration do
+					local human=player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+					if not human or human.Health<=0 then break end
+					task.wait(0.1)
+				end
+				feedbackPanel.Position=captionPosition; feedbackPanel.Size=captionSize
+				if not completed and generation==eveningGeneration then feedbackText.Text=result.feedback or "" end
+			end
+			actionRunning=false
+			if not ok then warn("Food action skipped:",err) end
+		end
 		if key=="TV" and expansion then expansion.TelevisionConsole.TVRemote.RoomControlPrompt.Enabled=false end
 		if option==1 and key=="BrushTeeth" then
 			first.Visible=false; second.Visible=false; close.Visible=false
 			local bathroom=workspace.CozyBedroom101:FindFirstChild("EnsuiteBathroom")
-			local duration=pace(20)
+			local duration=2.5
 			local brush=if bathroom then bathroom:FindFirstChild("Toothbrush") else nil
-			local brushHome=if brush then brush.CFrame else nil
-			for remaining=duration,1,-1 do
-				if completed or eveningClosed or generation~=eveningGeneration then break end
-				story.Text="Freshening up for the night.".."\n\n"..remaining.." seconds • game activity"
-				if key=="BrushTeeth" and brush and player.Character and player.Character:FindFirstChild("Head") then
+			local bristles=if bathroom then bathroom:FindFirstChild("Bristles") else nil
+			local character=player.Character
+			local head=character and character:FindFirstChild("Head")
+			if brush and head then
+				local home,collidable=brush.CFrame,brush.CanCollide
+				local bristleHome=bristles and bristles.CFrame
+				local bristleCollision=bristles and bristles.CanCollide
+				local offset=bristleHome and home:ToObjectSpace(bristleHome) or CFrame.new(0,0.8,0)
+				local camera=workspace.CurrentCamera
+				local fov=camera and camera.FieldOfView
+				local cameraHome=camera and {kind=camera.CameraType,subject=camera.CameraSubject,cf=camera.CFrame}
+				local zoom
+				local root=character:FindFirstChild("HumanoidRootPart")
+				local rootHome=root and root.CFrame
+				local rootAnchored=root and root.Anchored
+				actionRunning=true
+				local ok,err=xpcall(function()
+					dialog.Visible=false -- Leave the short brushing action unobstructed.
+					if root then
+						local counter=bathroom:FindFirstChild("MarbleCounter")
+						local away=if counter then root.Position-counter.Position else -root.CFrame.LookVector
+						away=Vector3.new(away.X,0,away.Z)
+						if away.Magnitude>0.01 then
+							local params=RaycastParams.new(); params.FilterType=Enum.RaycastFilterType.Exclude; params.FilterDescendantsInstances={character}
+							local step=away.Unit*1.25
+							local hit=workspace:Blockcast(root.CFrame,root.Size,step,params)
+							local distance=if hit then math.max(0,hit.Distance-0.2) else step.Magnitude
+							root.Anchored=true; root.AssemblyLinearVelocity=Vector3.zero; root.AssemblyAngularVelocity=Vector3.zero
+							root.CFrame=rootHome+away.Unit*distance
+						end
+					end
 					brush.CanCollide=false
-					brush.CFrame=player.Character.Head.CFrame*CFrame.new(0.35*(if remaining%2==0 then 1 else -1),-0.25,-0.8)*CFrame.Angles(0,0,math.pi/2)
+					if bristles then bristles.CanCollide=false end
+					if camera and camera.CameraType==Enum.CameraType.Custom then
+						camera.CameraType=Enum.CameraType.Scriptable
+						zoom=TweenService:Create(camera,TweenInfo.new(0.3),{FieldOfView=fov-5}); zoom:Play()
+					end
+					local started=os.clock()
+					while os.clock()-started<duration do
+						local human=character:FindFirstChildOfClass("Humanoid")
+						if completed or eveningClosed or generation~=eveningGeneration or player.Character~=character or not head.Parent or not brush.Parent or not human or human.Health<=0 then break end
+						local elapsed=os.clock()-started
+						story.Text="Freshening up for the night.\n\n"..math.ceil(duration-elapsed).." seconds • game activity"
+						local mouth=head.CFrame*CFrame.new(math.sin(elapsed*24)*0.12,-head.Size.Y*0.25,-head.Size.Z/2-0.12)*CFrame.Angles(0,0,math.pi/2)
+						brush.CFrame=mouth*offset:Inverse()
+						if bristles and bristles.Parent then bristles.CFrame=mouth end
+						if zoom then
+							local focus=head.Position-Vector3.new(0,0.2,0)
+							local view=head.CFrame.LookVector*2.4+head.CFrame.RightVector*1.8+Vector3.new(0,2.2,0)
+							local params=RaycastParams.new(); params.FilterType=Enum.RaycastFilterType.Exclude
+							params.FilterDescendantsInstances={character,brush,bristles or brush}
+							local hit=workspace:Raycast(focus,view,params)
+							local position=if hit then hit.Position-view.Unit*0.2 else focus+view
+							camera.CFrame=CFrame.lookAt(position,focus)
+						end
+						game:GetService("RunService").RenderStepped:Wait()
+					end
+				end,debug.traceback)
+				if root and root.Parent then
+					root.CFrame=rootHome; root.AssemblyLinearVelocity=Vector3.zero; root.AssemblyAngularVelocity=Vector3.zero
+					root.Anchored=rootAnchored
 				end
-				task.wait(1)
+				if zoom then
+					zoom:Cancel(); camera.FieldOfView=fov
+					camera.CFrame=cameraHome.cf; camera.CameraType=cameraHome.kind
+					camera.CameraSubject=if player.Character~=character and player.Character then player.Character:FindFirstChildOfClass("Humanoid") else cameraHome.subject
+				end
+				if brush.Parent then brush.CFrame=home; brush.CanCollide=collidable end
+				if bristles and bristles.Parent then bristles.CFrame=bristleHome; bristles.CanCollide=bristleCollision end
+				actionRunning=false
+				if not ok then warn("Brushing animation restored after error: "..tostring(err)) end
 			end
-			if brush and brushHome then brush.CFrame=brushHome end
 		end
 		if key=="Reading" and option==1 then
 			first.Visible=false; second.Visible=false; close.Visible=false
@@ -654,6 +826,7 @@ choose = function(option)
 	busy=false
 end
 first.Activated:Connect(function() choose(1) end)
+dndSwitch.Activated:Connect(function() if current=="Notifications" then choose(if answers.Notifications==1 then 2 else 1) end end)
 second.Activated:Connect(function() choose(2) end)
 close.Activated:Connect(function() if not busy then dialog.Visible=false end end)
 setCurtains(false); setCandle(true); setTV(false)
@@ -718,7 +891,7 @@ if status then updateMood(status.wellbeing); eveningStarted=status.eveningStarte
 refresh()
 gui.Enabled=true; Lighting.ClockTime=17.4
 showObjective()
-apply("Lighting",1)
+apply("Lighting",2)
 for _,p in prompts do p.Enabled=true end
 if rushMode then startRush() end
 -- Polling also recovers a ready dream if a sleep reply was lost. runDream's

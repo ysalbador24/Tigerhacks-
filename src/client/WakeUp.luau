@@ -44,15 +44,26 @@ function WakeUp.play(player)
 		local root = character and character:FindFirstChild("HumanoidRootPart")
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 		local room = workspace:FindFirstChild("CozyBedroom101")
-		local anchors = room and room:FindFirstChild("LayoutAnchors")
-		local bed = anchors and anchors:FindFirstChild("BedSleepTarget")
+		local raisedBed = room and room:FindFirstChild("RaisedBed")
+		local bed = raisedBed and raisedBed:FindFirstChild("Mattress")
 		local camera = workspace.CurrentCamera
 		local saved
 		if root and humanoid and bed and bed:IsA("BasePart") then
 			saved = {cframe = root.CFrame, anchored = root.Anchored, cameraType = camera.CameraType, subject = camera.CameraSubject}
 			root.Anchored = true
-			local upright = bed.CFrame * CFrame.new(0, 2.2, 0)
-			root.CFrame = bed.CFrame * CFrame.new(0, 0.9, 0) * CFrame.Angles(math.rad(90), 0, 0)
+			root.AssemblyLinearVelocity = Vector3.zero
+			root.AssemblyAngularVelocity = Vector3.zero
+			-- The bed runs along local X, with pillows at its negative-X end.
+			local surface = bed.Size.Y / 2
+			local duvet = raisedBed:FindFirstChild("PeachDuvet")
+			if duvet and duvet:IsA("BasePart") then
+				surface = math.max(surface, bed.CFrame:PointToObjectSpace(duvet.Position).Y + duvet.Size.Y / 2)
+			end
+			local bedPose = bed.CFrame * CFrame.Angles(0, -math.pi / 2, 0)
+			local leg = character:FindFirstChild("Left Leg")
+			local standingHeight = humanoid.HipHeight + root.Size.Y / 2 + (if leg then leg.Size.Y else 0)
+			local upright = bedPose * CFrame.new(0, surface + standingHeight + 0.15, 0)
+			root.CFrame = bedPose * CFrame.new(0, surface + root.Size.Z / 2 + 0.15, 0) * CFrame.Angles(math.rad(90), 0, 0)
 			camera.CameraType = Enum.CameraType.Scriptable
 			camera.CFrame = CFrame.lookAt(bed.Position + bed.CFrame.RightVector * 8 + Vector3.new(0, 4.5, 0), bed.Position + Vector3.new(0, 1, 0))
 			task.delay(1.9, function()
@@ -65,7 +76,11 @@ function WakeUp.play(player)
 		task.wait(WakeUp.DURATION)
 		gui:Destroy()
 		if saved then
-			if root.Parent then root.CFrame = saved.cframe; root.Anchored = saved.anchored end
+			if root.Parent then
+				root.CFrame = saved.cframe
+				root.AssemblyLinearVelocity = Vector3.zero; root.AssemblyAngularVelocity = Vector3.zero
+				root.Anchored = saved.anchored
+			end
 			camera.CameraType = saved.cameraType
 			camera.CameraSubject = saved.subject
 		end

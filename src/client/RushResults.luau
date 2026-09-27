@@ -9,18 +9,18 @@ function Results.show(player,result,onReplay)
  gui.Enabled=false
  task.delay(wake,function() if gui.Parent then gui.Enabled=true end end)
  local paper=Instance.new("Frame") paper.AnchorPoint=Vector2.new(.5,.5) paper.Position=UDim2.fromScale(.5,.5) paper.Size=UDim2.fromScale(.82,.88)
- paper.BackgroundColor3=Color3.fromRGB(12,50,82) paper.BorderSizePixel=0 paper.Parent=gui
+ paper.BackgroundColor3=Color3.fromRGB(28,30,49) paper.BorderSizePixel=0 paper.Parent=gui
  -- Pixel-art night card: navy with a chunky moonlight-cream border.
  local border=Instance.new("UIStroke") border.Thickness=4 border.Color=Color3.fromRGB(236,228,204) border.Parent=paper
  local limit=Instance.new("UISizeConstraint") limit.MaxSize=Vector2.new(850,750) limit.Parent=paper
  local corner=Instance.new("UICorner") corner.CornerRadius=UDim.new(0,2) corner.Parent=paper
  local ink=Color3.fromRGB(236,228,204)
  local function text(content,pos,size,max,font)
-  local t=Instance.new("TextLabel") t.BackgroundTransparency=1 t.Text=content t.TextColor3=ink t.TextScaled=true t.TextWrapped=true t.Font=font or Enum.Font.Arcade
+  local t=Instance.new("TextLabel") t.BackgroundTransparency=1 t.Text=content t.TextColor3=ink t.TextScaled=true t.TextWrapped=true t.Font=font or Enum.Font.Gotham
   t.Position=pos t.Size=size t.Parent=paper
   local cap=Instance.new("UITextSizeConstraint") cap.MaxTextSize=max cap.MinTextSize=9 cap.Parent=t return t
  end
- text("BARB'S MORNING REPORT",UDim2.fromScale(.06,.03),UDim2.fromScale(.88,.05),17)
+ text("BARB'S MORNING REPORT",UDim2.fromScale(.06,.03),UDim2.fromScale(.88,.05),17,Enum.Font.Arcade)
  local grade=text(result.grade,UDim2.fromScale(.06,.095),UDim2.fromScale(.2,.19),92,Enum.Font.Arcade)
  grade.TextColor3=Color3.fromRGB(240,222,158) grade.Rotation=-7
  -- Stamp reveal: the grade hangs back for a beat, then slams onto the page.
@@ -65,7 +65,7 @@ function Results.show(player,result,onReplay)
  text("Dream Stability is a game outcome. Habits inspired by CDC sleep tips.",UDim2.fromScale(.07,.79),UDim2.fromScale(.86,.035),11,Enum.Font.Gotham)
  local retry=Instance.new("TextButton") retry.AnchorPoint=Vector2.new(.5,0) retry.Position=UDim2.fromScale(.5,.86) retry.Size=UDim2.fromScale(.65,.09)
  local retryText=({S="DEFEND MY TITLE",A="GO FOR S",B="ONE MORE NIGHT",C="LOG OFF & RETRY",D="I CAN DO BETTER"})[result.grade] or "TRY AGAIN"
- retry.BackgroundColor3=Color3.fromRGB(236,228,204) retry.BorderSizePixel=0 retry.Text=retryText retry.TextColor3=Color3.fromRGB(12,50,82) retry.TextScaled=true retry.Font=Enum.Font.Arcade retry.Parent=paper
+ retry.BackgroundColor3=Color3.fromRGB(236,228,204) retry.BorderSizePixel=0 retry.Text=retryText retry.TextColor3=Color3.fromRGB(12,50,82) retry.TextScaled=true retry.Font=Enum.Font.GothamBold retry.Parent=paper
  local cap=Instance.new("UITextSizeConstraint") cap.MinTextSize=12 cap.MaxTextSize=25 cap.Parent=retry
  local min=Instance.new("UISizeConstraint") min.MinSize=Vector2.new(0,44) min.Parent=retry
  local c=Instance.new("UICorner") c.CornerRadius=UDim.new(0,2) c.Parent=retry

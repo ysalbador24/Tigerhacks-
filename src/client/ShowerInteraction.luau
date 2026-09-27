@@ -4,7 +4,7 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local Shower = {}
 -- Set this to a permitted shower/dripping-water audio asset, e.g. rbxassetid://123456.
-local SHOWER_WATER_SOUND_ID = "rbxassetid://127567048109598"
+local SHOWER_WATER_SOUND_ID = "rbxassetid://83045519805568"
 local activeController
 function Shower.start(player, bathroom, finish)
 	if activeController then activeController.stop(true) end
@@ -46,7 +46,9 @@ function Shower.start(player, bathroom, finish)
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "ShowerInteraction"; gui.ResetOnSpawn = false; gui.DisplayOrder = 9; gui.Parent = player.PlayerGui
 	local panel = Instance.new("Frame")
-	panel.Position = UDim2.fromScale(0.28,0.26); panel.Size = UDim2.fromScale(0.44,0.62)
+	panel.AnchorPoint = Vector2.new(0.5,0.5)
+	panel.Position = UDim2.fromScale(0.5,0.57); panel.Size = UDim2.fromScale(0.4,0.58)
+	local panelSize=Instance.new("UISizeConstraint",panel); panelSize.MaxSize=Vector2.new(400,420)
 	panel.BackgroundColor3 = Color3.fromRGB(247,233,212); panel.Parent = gui
 	Instance.new("UICorner",panel).CornerRadius = UDim.new(0,24)
 	local border=Instance.new("UIStroke",panel); border.Color=Color3.fromRGB(183,203,190); border.Thickness=3
@@ -60,10 +62,10 @@ function Shower.start(player, bathroom, finish)
 	local function text(content,y,height)
 		local t=Instance.new("TextLabel"); t.BackgroundTransparency=1; t.Text=content
 		t.Position=UDim2.fromScale(0.05,y); t.Size=UDim2.fromScale(0.9,height)
-		t.TextColor3=Color3.fromRGB(68,65,74); t.TextScaled=true; t.Font=Enum.Font.Gotham; t.Parent=panel
+		t.TextColor3=Color3.fromRGB(68,65,74); t.TextScaled=true; t.TextWrapped=true; t.Font=Enum.Font.Gotham; t.Parent=panel
 		local cap=Instance.new("UITextSizeConstraint",t); cap.MaxTextSize=19; return t
 	end
-	local heading=text("Bubble break • optional",0.02,0.08); heading.Font=Enum.Font.FredokaOne
+	local heading=text("Bubble break",0.02,0.08); heading.Font=Enum.Font.FredokaOne
 	local temperatureText=text("Water: Just right • 50%",0.12,0.07)
 	local track=Instance.new("TextButton"); track.Text=""; track.AutoButtonColor=false
 	track.Position=UDim2.fromScale(0.1,0.24); track.Size=UDim2.fromScale(0.8,0.06)
@@ -155,7 +157,7 @@ function Shower.start(player, bathroom, finish)
 		if cleared>=4 then
 			wiped=true; finishButton.Active=true; finishButton.AutoButtonColor=true
 			finishButton.Text="Finish Shower"; finishButton.BackgroundColor3=Color3.fromRGB(164,193,164); finishButton.TextColor3=Color3.fromRGB(43,63,51)
-			instruction.Text="Lovely! A clear little window. All done?"
+			instruction.Text="Let the day wash away. All done?"
 		end
 	end
 	local dragging,dragInput=nil,nil
