@@ -185,6 +185,15 @@ end
 function Expansion.build(room)
 	local existing = room:FindFirstChild("CottageExpansion")
 	if existing then
+		local accessories = existing:FindFirstChild("CozyAccessories")
+		if accessories then
+			local planterPosition = Vector3.new(-74,16.34,-161)
+			for _, object in accessories:GetChildren() do
+				if object:IsA("BasePart") and (object.Position-planterPosition).Magnitude < 3 then
+					object:Destroy()
+				end
+			end
+		end
 		Expansion.ensureLanding(existing); Expansion.ensureReadingWall(existing)
 		Expansion.applyLayout(room, existing)
 		return existing
@@ -358,7 +367,6 @@ function Expansion.build(room)
 	end
 	plant(extras,-21,0,10,1.2)
 	plant(extras,24,0,22,1.3)
-	plant(extras,10,3.4,0,0.6)
 	for _,pos in {Vector3.new(-12,1.5,21),Vector3.new(23,19.5,12)} do
 		local lantern=part(extras,"LanternGlow",Vector3.new(1.3,2,1.3),pos,gold,Enum.Material.Neon); glow(lantern,0.35,12)
 		for _,dy in {-1.2,1.2} do part(extras,"LanternCap",Vector3.new(2,0.2,2),pos+Vector3.new(0,dy,0),cream) end
